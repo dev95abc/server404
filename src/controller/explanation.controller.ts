@@ -15,19 +15,37 @@ export const getExplanationById = async (req: Request, res: Response) => {
   try {
     const explanation = await explanationModel.fetchExplanationById(id);
     if (!explanation) {
-       res.status(404).json({ message: 'Explanation not found' });
-    } 
+      res.status(404).json({ message: 'Explanation not found' });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Failed to fetch explanation', error });
+    res.status(500).json({ message: 'Failed to fetch ex-planation', error });
   }
 };
 
 export const getExplanationsByTopicId = async (req: Request, res: Response) => {
+
+  console.log('getExplanationsByTopicId get called')
   const topicId = Number(req.params.topicId);
+  const chpId = Number(req.params.chpId);
+  const topicTitle: string = req.body.title
+  console.log(topicId)
   try {
-    const explanations = await explanationModel.fetchExplanationsByTopicId(topicId);
-    res.json(explanations);
+    const explanations = await explanationModel.fetchExplanationsByTopicId(topicId); 
+    if (explanations.length === 0) { 
+      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle); 
+      res.status(201).json([newExplanation]);
+
+       const res1 = await  explanationModel.insertExplanation(topicId, newExplanation.prompt,newExplanation.text, newExplanation.likes );
+       if(res1){
+        console.log('genreated...')
+       }
+    } else {
+      console.log(  'explanations from database')
+      res.json(explanations);
+    }
+
   } catch (error) {
+    console.log('error in get expn', error)
     res.status(500).json({ message: 'Failed to fetch explanations by topic', error });
   }
 };
@@ -35,11 +53,11 @@ export const getExplanationsByTopicId = async (req: Request, res: Response) => {
 export const createExplanation = async (req: Request, res: Response) => {
   const { topicId, content } = req.body;
   if (!topicId || !content) {
-      res.status(400).json({ message: 'topicId and content are required' });
+    res.status(400).json({ message: 'topicId and content are required' });
   }
   try {
-    const newExplanation = await explanationModel.insertExplanation(topicId, content);
-    res.status(201).json(newExplanation);
+    // const newExplanation = await explanationModel.insertExplanation(topicId, content);
+    // res.status(201).json(newExplanation);
   } catch (error) {
     res.status(500).json({ message: 'Failed to create explanation', error });
   }
@@ -49,7 +67,7 @@ export const updateExplanation = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { content } = req.body;
   if (!content) {
-      res.status(400).json({ message: 'content is required' });
+    res.status(400).json({ message: 'content is required' });
   }
   try {
     const updatedExplanation = await explanationModel.updateExplanationById(id, content);
