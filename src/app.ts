@@ -8,6 +8,7 @@ import courseRoutes from './routes/course.routes';
 import chapterRoutes from './routes/chapter.routes';
 import topicRoutes from './routes/topic.routes';
 import explanationRoutes from './routes/explanation.routes';
+import grokeRoutes from './routes/grok.routes'
 // import promptRoutes from './routes/prompt.routes';
 
 dotenv.config();
@@ -26,6 +27,7 @@ app.use('/courses', courseRoutes);
 app.use('/chapters', chapterRoutes);
 app.use('/topics', topicRoutes);
 app.use('/explanations', explanationRoutes);
+app.use('/groke', grokeRoutes);
 // app.use('/prompts', promptRoutes);
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {

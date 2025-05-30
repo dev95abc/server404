@@ -36,6 +36,95 @@ export const deleteCourseById = async (id: number) => {
     await db.run('DELETE FROM course WHERE id = ?', id);
 };
 
+
+interface CoursePayload {
+  id?: number;
+  semester_id: number;
+  course_code: string;
+  course_title: string;
+  credits: number;
+  modules: Array<{
+    id?: number;
+    course_id?: number;
+    name: string;
+    module_number: number;
+    unit_number: number;
+    topics: Array<{
+      id?: number;
+      chapter_id?: number;
+      title: string;
+    }>;
+  }>;
+}
+
+export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>): Promise<CoursePayload>  => {
+    const db = await getDb();
+    
+    try {
+      await db.run('BEGIN TRANSACTION');
+
+      // 1. Insert the course
+      const courseResult = await db.run(
+        `INSERT INTO courses (semester_id, course_code, course_title, credits)
+         VALUES (?, ?, ?, ?)`,
+        [payload.semester_id, payload.course_code, payload.course_title, payload.credits]
+      );
+      const courseId = courseResult.lastID;
+
+      // 2. Insert all chapters/modules
+      const insertedModules = await Promise.all(
+        payload.modules.map(async (module) => {
+          const moduleResult = await db.run(
+            `INSERT INTO chapters (course_id, name, module_number, unit_number)
+             VALUES (?, ?, ?, ?)`,
+            [courseId, module.name, module.module_number, module.unit_number]
+          );
+          const chapterId = moduleResult.lastID;
+
+          // 3. Insert all topics for this chapter
+          const insertedTopics = await Promise.all(
+            module.topics.map(async (topic) => {
+              const topicResult = await db.run(
+                `INSERT INTO topics (chapter_id, title)
+                 VALUES (?, ?)`,
+                [chapterId, topic.title]
+              );
+              return {
+                ...topic,
+                id: topicResult.lastID,
+                chapter_id: chapterId
+              };
+            })
+          );
+
+          return {
+            ...module,
+            id: chapterId,
+            course_id: courseId,
+            topics: insertedTopics
+          };
+        })
+      );
+
+      await db.run('COMMIT');
+
+      return {
+        ...payload,
+        id: courseId,
+        modules: insertedModules
+      };
+
+    } catch (error) {
+        console.log(error, 'error in qureis')
+      await db.run('ROLLBACK');
+      console.error('Error inserting course hierarchy:', error);
+      throw error;
+    }
+  }
+
+
+
+
 export const AllDetailsByCourseId = async (id: number) => {
     const db = await getDb();
     console.log('running....', id)
@@ -95,3 +184,4 @@ ORDER BY
         }
     );
 }
+

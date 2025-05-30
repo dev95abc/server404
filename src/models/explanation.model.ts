@@ -1,8 +1,9 @@
 import { getDb } from '../db';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({  
+const groq = new Groq({
   //add keys here
+  apiKey: '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'
 });
 
 
@@ -22,7 +23,7 @@ export const fetchExplanationsByTopicId = async (topicId: number) => {
   return db.all('SELECT * FROM explanations WHERE topic_id = ? ORDER BY id', topicId);
 };
 
-export const insertExplanation = async (topicId: number,prompt:string, content: string, likes: Number) => {
+export const insertExplanation = async (topicId: number, prompt: string, content: string, likes: Number) => {
   console.log('creating explsnation')
   const db = await getDb();
   const result = await db.run(
@@ -46,7 +47,7 @@ export const deleteExplanationById = async (id: number) => {
   await db.run('DELETE FROM explanation WHERE id = ?', id);
 };
 
- 
+
 interface Explanation {
   id: number;
   text: string;
@@ -55,7 +56,7 @@ interface Explanation {
 }
 
 
-export const generateExplanation = async (topicId: Number,chpId:Number, topicTitle: string) => { 
+export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string) => {
   const prompt = `Explain the topic "${topicTitle}" in simple terms for a beginner.`;
 
   const completion = await groq.chat.completions.create({
@@ -85,4 +86,102 @@ export const generateExplanation = async (topicId: Number,chpId:Number, topicTit
   };
   return explanation
 
+};
+
+
+type ParsedSyllabus = {
+  modules: Array<{
+    module_number: number;
+    units: Array<{
+      unit_number: number;
+      chapters: Array<{
+        id: number;
+        name: string;
+        module_number: number;
+        unit_number: number;
+        topics: Array<{
+          id: number;
+          title: string;
+        }>;
+      }>;
+    }>;
+  }>;
+};
+
+export const parseSyllabus = async (
+  rawSyllabusText: string
+): Promise<ParsedSyllabus | null> => {
+  const prompt = `
+You are an expert syllabus parser.
+
+Given the following raw syllabus text, extract and organize it into JSON with this structure:
+
+{
+  "modules": [
+    {
+      "module_number": <number>,
+      "units": [
+        {
+          "unit_number": <number>,
+          "chapters": [
+            {
+              "id": <unique id>,
+              "name": "<chapter name>",
+              "module_number": <module number>,
+              "unit_number": <unit number>,
+              "topics": [
+                {
+                  "id": <unique id>,
+                  "title": "<topic title>"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+
+Number the modules, units, chapters, and topics sequentially and uniquely. Use the text to fill the fields appropriately.
+
+Raw syllabus text:
+"""
+${rawSyllabusText}
+"""`;
+
+  const completion = await groq.chat.completions.create({
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a helpful assistant that expertly parses syllabus text into structured JSON.',
+      },
+      {
+        role: 'user',
+        content: prompt,
+      },
+    ],
+    temperature: 0.7,
+  });
+
+  const responseText = completion.choices?.[0]?.message?.content ?? '';
+
+  // Try to parse the JSON from the response
+  try {
+    // Sometimes model outputs explanation or text around JSON, so try to extract JSON by finding {...}
+    const jsonStart = responseText.indexOf('{');
+    const jsonEnd = responseText.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      const jsonString = responseText.substring(jsonStart, jsonEnd + 1);
+      const parsed: ParsedSyllabus = JSON.parse(jsonString);
+      return parsed;
+    }
+  } catch (err) {
+    console.error('Failed to parse syllabus JSON:', err);
+  }
+
+  // Return null if parsing fails
+  return null;
 };
