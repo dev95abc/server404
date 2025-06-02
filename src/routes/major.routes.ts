@@ -2,7 +2,7 @@
 import express from 'express';
 import {
   getAllMajors,
-  getMajorById,
+  getAllMajorsByUniversityId,
   createMajor,
   updateMajor,
   deleteMajor,
@@ -11,7 +11,8 @@ import {
 const router = express.Router();
 
 router.get('/', getAllMajors);
-router.get('/:id', getMajorById);
+// router.get('/', getAllMajors);
+router.get('/:id', getAllMajorsByUniversityId);
 router.post('/', createMajor);
 router.put('/:id', updateMajor);
 router.delete('/:id', deleteMajor);

@@ -6,9 +6,9 @@ export const getAllMajors = async (_req: Request, res: Response) => {
   res.json(majors);
 };
 
-export const getMajorById = async (req: Request, res: Response) => {
+export const getAllMajorsByUniversityId = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id);
-  const major = await majorModel.fetchMajorById(id);
+  const major = await majorModel.fetchMajorByUniversityId(id);
   if (!major)   res.status(404).json({ message: 'Major not found' });
   res.json(major);
 };

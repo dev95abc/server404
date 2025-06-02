@@ -92,6 +92,7 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
 
     // Fetch course details
     const course = await CourseModel.fetchCourseById(id);
+    console.log('course =>>', course, 'params =>', req.params)
     if (!course) {
       res.status(404).json({ message: 'Course not found' });
     }
@@ -121,12 +122,21 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error in getAllDetailsByCourseId:', error);
     res.status(500).json({
-      message: 'Failed to fetch course details',
+      message: req,
       error: error instanceof Error ? error.message : String(error)
     });
   }
 };
-
+ 
+export const getAllCourseByMajorId = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const courses = await CourseModel.fetchAllCoursesByMajorId(id);
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch courses', error });
+  }
+};
 
 
 

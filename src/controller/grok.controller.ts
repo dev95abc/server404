@@ -95,16 +95,16 @@ export function organizeByModulesAndUnits(chapters: any) {
 }
 
 export const getParsedSyllabus = async (_req: Request, res: Response) => {
-  // const {textData }= _req.body 
+  const {textData }= _req.body 
 //TODO: add tryCatch block
   //this return an compact object by the plain text
-  const parsed = await majorModel.parseSyllabus(testData);
+  const parsed = await majorModel.parseSyllabus(textData);
   // const formatedParsedData = organizeByModulesAndUnits(parsed?.modules)
   if (parsed) {
     console.log('this is parsed running ')
     //this saves the data in database,  i takes the copact object as input
     const letSee = await insertCourseHierarchy(parsed)
-    res.json(parsed.id);
+    res.json(letSee);
   }
  res.json({status: 'not working '});
 };

@@ -6,9 +6,9 @@ export const fetchAllMajors = async () => {
   return db.all('SELECT * FROM major ORDER BY id');
 };
 
-export const fetchMajorById = async (id: number) => {
+export const fetchMajorByUniversityId = async (id: number) => {
   const db = await getDb();
-  return db.get('SELECT * FROM major WHERE id = ?', id);
+  return db.all('SELECT * FROM majors WHERE university_id = ?', id);
 };
 
 export const insertMajor = async (name: string, universityId: number) => {

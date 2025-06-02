@@ -7,6 +7,11 @@ import {
 
 const router = express.Router();
 
-router.post('/', getAllMajors); 
-router.get('/', getParsedSyllabus); 
+
+router.post('/', getParsedSyllabus); 
+
+
+
+
+// router.post('/', getAllMajors); 
 export default router;

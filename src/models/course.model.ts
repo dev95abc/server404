@@ -9,6 +9,10 @@ export const fetchCourseById = async (id: number) => {
     const db = await getDb();
     return db.get('SELECT * FROM courses WHERE id = ?', [id]);
 };
+export const fetchAllCoursesByMajorId = async (id: number) => {
+    const db = await getDb();
+    return db.all('SELECT * FROM courses WHERE id = ?', [id]);
+};
 
 export const insertCourse = async (name: string, semesterId: number) => {
     const db = await getDb();
