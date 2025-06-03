@@ -14,11 +14,11 @@ export const fetchMajorByUniversityId = async (id: number) => {
 export const insertMajor = async (name: string, universityId: number) => {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO major (name, university_id) VALUES (?, ?)',
+    'INSERT INTO majors (name, university_id) VALUES (?, ?)',
     name,
     universityId
   );
-  return db.get('SELECT * FROM major WHERE id = ?', result.lastID);
+  return db.get('SELECT * FROM majors WHERE id = ?', result.lastID);
 };
 
 export const updateMajorById = async (id: number, name: string) => {

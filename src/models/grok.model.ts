@@ -4,7 +4,7 @@ import Groq from 'groq-sdk';
 
 const groq = new Groq({
   //add keys here
-  apiKey: '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'
+  apiKey: 'xai-2oPPgEV4yzl77zMMIW6MMpqEMdEApA25tdutXx4gbHj0I9VCPeAzujUs7K3nQI7C6hMEPIBAQK8LtUJ9'
 });
 
 type ParsedSyllabus = {
@@ -13,6 +13,7 @@ type ParsedSyllabus = {
   course_code: string;
   course_title: string;
   credits: number;
+  major_id: number | null;
   modules: Array<{
     id?: number;
     course_id?: number;
@@ -116,6 +117,7 @@ ${rawSyllabusText}
         topic.id = topicIdCounter++;
       });
     });
+    // parsed.major_id=
     
     return parsed;
   } catch (err) {

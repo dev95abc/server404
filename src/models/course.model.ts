@@ -47,6 +47,7 @@ interface CoursePayload {
   course_code: string;
   course_title: string;
   credits: number;
+  major_id: number | null;
   modules: Array<{
     id?: number;
     course_id?: number;
@@ -69,9 +70,9 @@ export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>):
 
       // 1. Insert the course
       const courseResult = await db.run(
-        `INSERT INTO courses (semester_id, course_code, course_title, credits)
+        `INSERT INTO courses (semester_id, course_code, course_title, credits, major_id)
          VALUES (?, ?, ?, ?)`,
-        [payload.semester_id, payload.course_code, payload.course_title, payload.credits]
+        [payload.semester_id, payload.course_code, payload.course_title, payload.credits, payload.major_id]
       );
       const courseId = courseResult.lastID;
 
