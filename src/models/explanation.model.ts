@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { getDb } from '../db';
 import Groq from 'groq-sdk';
 
@@ -56,7 +57,7 @@ interface Explanation {
 }
 
 
-export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string) => {
+export const generateExplanation1 = async (topicId: Number, chpId: Number, topicTitle: string) => {
   const prompt = `Explain the topic "${topicTitle}" in simple terms for a beginner.`;
 
   const completion = await groq.chat.completions.create({
@@ -87,6 +88,67 @@ export const generateExplanation = async (topicId: Number, chpId: Number, topicT
   return explanation
 
 };
+
+
+export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string) => {
+  const prompt = `Explain the topic "${topicTitle}" in simple terms for a beginner.`;
+
+  try {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
+
+    const response = await axios.post(apiUrl, {
+      contents: [{
+        parts: [
+          {
+            text: JSON.stringify([
+              {
+                role: "user",
+                parts: [{ text: "You are a helpful assistant that explains academic concepts clearly and concisely." }]
+              },
+              {
+                role: "model",
+                parts: [{ text: "Understood. I will explain concepts clearly and simply." }]
+              },
+              {
+                role: "user",
+                parts: [{ text: prompt }]
+              }
+            ])
+          }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.7, // Matching the original temperature
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const explanationText = response.data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    console.log('Explanation generated:', explanationText);
+    const explanation: Explanation = {
+      id: Number(topicId),
+      text: explanationText,
+      prompt,
+      likes: 0,
+    };
+    return explanation;
+
+  } catch (error) {
+    console.error('Error calling Gemini API:', error);
+    // Return empty explanation if API call fails
+    return {
+      id: Number(topicId),
+      text: '',
+      prompt,
+      likes: 0,
+    };
+  }
+};
+
 
 
 type ParsedSyllabus = {

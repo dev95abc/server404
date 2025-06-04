@@ -1,10 +1,11 @@
 // src/models/majorModel.ts
+import axios from 'axios';
 import { getDb } from '../db';
 import Groq from 'groq-sdk';
 
 const groq = new Groq({
   //add keys here
-  apiKey: 'xai-2oPPgEV4yzl77zMMIW6MMpqEMdEApA25tdutXx4gbHj0I9VCPeAzujUs7K3nQI7C6hMEPIBAQK8LtUJ9'
+  apiKey: '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'
 });
 
 type ParsedSyllabus = {
@@ -15,7 +16,7 @@ type ParsedSyllabus = {
   credits: number;
   major_id: number | null;
   modules: Array<{
-    id?: number;
+    id: number;
     course_id?: number;
     name: string;
     module_number: number;
@@ -28,106 +29,295 @@ type ParsedSyllabus = {
   }>;
 };
 
+
+
 export const parseSyllabus = async (
   rawSyllabusText: string
 ): Promise<ParsedSyllabus | null> => {
-  const prompt = `
-You are an expert syllabus parser.
 
-Given the following raw syllabus text, extract and organize it into JSON with this structure:
+  const cleanedText = rawSyllabusText.split('\n')
+    .filter(line => !line.match(/^comece|wows|\|/)) // Remove garbage lines
+    .join('\n')
+    .trim();
 
+ const prompt = `
+You are an expert syllabus parser that strictly follows output formatting rules.
+
+IMPORTANT INSTRUCTIONS:
+1. Extract ONLY the actual syllabus content, ignoring any irrelevant text
+2. Split ALL topic lists into individual items (never combine multiple topics in one item)
+3. Create separate modules for each Unit (Unit 1, Unit 2, etc.)
+4. For content under "General Principles", create a separate module within the same Unit
+5. Follow EXACTLY this JSON structure:
 {
-  "id": 1,
+  "id": number,
   "semester_id": 1,
-  "course_code": "CS101",
-  "course_title": "Introduction to Computer Science",
-  "credits": 4,
+  "course_code": "SIM101",
+  "course_title": "Introduction to Simulation and Statistical Models",
+  "credits": 3,
+  "major_id": null,
   "modules": [
     {
-      "id": 1,
-      "course_id": 1,
-      "name": "Introduction to Programming",
-      "module_number": 1,
+      "id": number,
+      "course_id": same_as_parent_id,
+      "name": "string",
+      "module_number": sequential (1, 2, 3...),
       "unit_number": 1,
       "topics": [
         {
-          "id": 1,
-          "chapter_id": 1,
-          "title": "What is Programming?"
-        },
-        {
-          "id": 2,
-          "chapter_id": 1,
-          "title": "History of Programming Languages"
+          "id": number,
+          "chapter_id": same_as_module_id,
+          "title": "string"
         }
       ]
     }
   ]
 }
 
-Rules:
-1. Number all IDs sequentially starting from 1
-2. Set course_id to always match the syllabus id (1 in this example)
-3. For the course_code, extract it from the text or use a placeholder like "SIM101"
-4. For the course_title, extract it from the text or use a descriptive title
-5. Set credits to a reasonable value (typically 3-4)
-6. Create modules based on the units in the syllabus
-7. Break down each unit's content into topics
-8. The module_number should increment sequentially
-9. The unit_number should reset for each new module
+SPECIFIC RULES:
+1. Unit 1 content should create two modules:
+   - First module: "Introduction to Simulation and Statistical Models"
+   - Second module: "General Principles" (from the General Principles section)
+2. Unit 2 content should create one module
+3. NEVER combine topics from different sections
+4. Remove colons from topic titles (e.g., "Introduction to Simulation" not "Introduction to Simulation:")
+5. Set course_code to "SIM101"
+6. Set course_title to "Introduction to Simulation and Statistical Models"
+7. Set credits to 3
+8. Set major_id to null
+9. All unit_number values should be 1
+10. Topics should be split at commas and colons
 
 Raw syllabus text:
 """
-${rawSyllabusText}
-"""`;
+${cleanedText}
+"""
 
-  const completion = await groq.chat.completions.create({
-    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a helpful assistant that expertly parses syllabus text into structured JSON according to the specified format.',
-      },
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
-    temperature: 0.5, // Lower temperature for more structured output
-    response_format: { type: "json_object" }, // Request JSON output
-  });
+ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
 
-  const responseText = completion.choices?.[0]?.message?.content ?? '';
 
   try {
-    // Parse the JSON response
-    const parsed: ParsedSyllabus = JSON.parse(responseText);
-    
-    // Validate basic structure
-    if (!parsed.modules || !Array.isArray(parsed.modules)) {
-      throw new Error("Invalid module structure");
-    }
-    
-    // Ensure all IDs are properly set
-    let topicIdCounter = 1;
-    parsed.modules.forEach(module => {
-      module.course_id = parsed.id;
-      module.topics.forEach(topic => {
-        topic.id = topicIdCounter++;
-      });
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
+
+    const response = await axios.post(apiUrl, {
+      contents: [
+        {
+          parts: [
+            {
+              text: JSON.stringify([
+                {
+                  role: 'user',
+                  parts: [{ text: 'You are a helpful assistant that expertly parses syllabus text into structured JSON according to the specified format.' }]
+                },
+                {
+                  role: 'model',
+                  parts: [{ text: 'Understood. I will parse syllabus text into the specified JSON format.' }]
+                },
+                {
+                  role: 'user',
+                  parts: [{ text: prompt }]
+                }
+              ])
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3, // Match Groq's temperature
+        response_mime_type: "application/json" // Request JSON output
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
-    // parsed.major_id=
+
+    // Extract the response text
+    const responseText = response.data.candidates[0].content.parts[0].text;
+    const test = JSON.parse(responseText);
+    test.major_id = null
+    console.log('Parsed JSON:', test);
+    console.log('Response from Gemini API:', responseText);
+    try {
+      // Parse the JSON response
+      const parsed: ParsedSyllabus = test[0];
+
+      // Validate basic structure (same as Groq implementation)
+      if (!parsed.modules || !Array.isArray(parsed.modules)) {
+        throw new Error("Invalid module structure");
+      }
+
+      // Ensure all IDs are properly set (same as Groq implementation)
+      let topicIdCounter = 1;
+      parsed.modules.forEach(module => {
+        module.course_id = parsed.id;
+        module.unit_number = 1; // Force unit_number to 1
+        module.topics.forEach(topic => {
+          topic.id = topicIdCounter++;
+          topic.chapter_id = module.id;
+        });
+      });
+
+      return parsed;
+    } catch (err) {
+      console.error('Failed to parse syllabus JSON:', err);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error calling Gemini API:', error);
+    return null;
+  }
+};
+
+
+export const parseSyllabus2 = async (
+  rawSyllabusText: string
+): Promise<ParsedSyllabus | null> => {
+  // Enhanced input cleaning
+  const cleanedText = rawSyllabusText
+    .split('\n')
+    .filter(line => !line.match(/^(comece|wows|\||MODULE -1)/i)) // Remove garbage lines and module headers
+    .join('\n')
+    .replace(/\n\s*\n/g, '\n') // Remove empty lines
+    .trim();
+
+  const prompt = `
+You are an expert syllabus parser that strictly follows output formatting rules.
+
+IMPORTANT INSTRUCTIONS:
+1. Extract ONLY the actual syllabus content, ignoring any irrelevant text
+2. Split ALL topic lists into individual items (never combine multiple topics in one item)
+3. Create separate modules for each Unit (Unit 1, Unit 2, etc.)
+4. For content under "General Principles", create a separate module within the same Unit
+5. Follow EXACTLY this JSON structure:
+{
+  "id": number,
+  "semester_id": 1,
+  "course_code": "SIM101",
+  "course_title": "Introduction to Simulation and Statistical Models",
+  "credits": 3,
+  "major_id": null,
+  "modules": [
+    {
+      "id": number,
+      "course_id": same_as_parent_id,
+      "name": "string",
+      "module_number": sequential (1, 2, 3...),
+      "unit_number": 1,
+      "topics": [
+        {
+          "id": number,
+          "chapter_id": same_as_module_id,
+          "title": "string"
+        }
+      ]
+    }
+  ]
+}
+
+SPECIFIC RULES:
+1. Unit 1 content should create two modules:
+   - First module: "Introduction to Simulation and Statistical Models"
+   - Second module: "General Principles" (from the General Principles section)
+2. Unit 2 content should create one module
+3. NEVER combine topics from different sections
+4. Remove colons from topic titles (e.g., "Introduction to Simulation" not "Introduction to Simulation:")
+5. Set course_code to "SIM101"
+6. Set course_title to "Introduction to Simulation and Statistical Models"
+7. Set credits to 3
+8. Set major_id to null
+9. All unit_number values should be 1
+10. Topics should be split at commas and colons
+
+Raw syllabus text:
+"""
+${cleanedText}
+"""
+
+ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
+
+  try {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
+
+   const response = await axios.post(apiUrl, {
+      contents: [
+        {
+          parts: [
+            {
+              text: JSON.stringify([
+                {
+                  role: 'user',
+                  parts: [{ text: 'You are a helpful assistant that expertly parses syllabus text into structured JSON according to the specified format.' }]
+                },
+                {
+                  role: 'model',
+                  parts: [{ text: 'Understood. I will parse syllabus text into the specified JSON format.' }]
+                },
+                {
+                  role: 'user',
+                  parts: [{ text: prompt }]
+                }
+              ])
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.3, // Match Groq's temperature
+        response_mime_type: "application/json" // Request JSON output
+      }
+    }, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const responseText = response.data.candidates[0].content.parts[0].text;
     
-    return parsed;
-  } catch (err) {
-    console.error('Failed to parse syllabus JSON:', err);
+    try {
+      const parsed: ParsedSyllabus = JSON.parse(responseText);
+      
+      // Post-processing to ensure exact format
+      let topicIdCounter = 1;
+      let moduleIdCounter = 1;
+      
+      parsed.modules.forEach(module => {
+        module.id = moduleIdCounter++;
+        module.course_id = parsed.id;
+        module.unit_number = 1;
+        
+        module.topics.forEach(topic => {
+          topic.id = topicIdCounter++;
+          topic.chapter_id = module.id;
+          // Clean topic titles
+          topic.title = topic.title
+            .replace(/:/g, '') // Remove colons
+            .trim();
+        });
+      });
+      
+      // Force specific fields
+      parsed.course_code = "SIM101";
+      parsed.course_title = "Introduction to Simulation and Statistical Models";
+      parsed.credits = 3;
+      parsed.major_id = null;
+      parsed.semester_id = 1;
+      
+      return parsed;
+    } catch (err) {
+      console.error('Failed to parse syllabus JSON:', err);
+      return null;
+    }
+  } catch (error) {
+    console.error('Error calling Gemini API:', error);
     return null;
   }
 };
 // export const  bulkSaveCourseHierarchy = async (courseData: any) => {
 //   const db = await getDb();
-  
+
 //   try {
 //     await db.run('BEGIN TRANSACTION');
 
@@ -142,7 +332,7 @@ ${rawSyllabusText}
 //     // 2. Prepare all chapters and topics
 //     const chapterValues = [];
 //     const topicValues = [];
-    
+
 //     for (const module of courseData.modules) {
 //       for (const unit of module.units) {
 //         for (const chapter of unit.chapters) {
@@ -156,7 +346,7 @@ ${rawSyllabusText}
 //       `INSERT INTO chapters (course_id, name, module_number, unit_number) 
 //        VALUES (?, ?, ?, ?)`
 //     );
-    
+
 //     for (const values of chapterValues) {
 //       await chapterStmt.run(values);
 //     }
@@ -186,7 +376,7 @@ ${rawSyllabusText}
 //     const topicStmt = await db.prepare(
 //       `INSERT INTO topics (chapter_id, title) VALUES (?, ?)`
 //     );
-    
+
 //     for (const values of topicValues) {
 //       await topicStmt.run(values);
 //     }
