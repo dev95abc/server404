@@ -30,18 +30,27 @@ export const getExplanationsByTopicId = async (req: Request, res: Response) => {
   const topicTitle: string = req.body.title
   console.log(topicId)
   try {
-    const explanations = await explanationModel.fetchExplanationsByTopicId(topicId); 
-    if (explanations.length === 0) { 
-      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle); 
+    const explanations = await explanationModel.fetchExplanationsByTopicId(topicId);
+    if (explanations.length === 0) {
+      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle);
       res.status(201).json([newExplanation]);
 
-       const res1 = await  explanationModel.insertExplanation(topicId, newExplanation.prompt,newExplanation.text, newExplanation.likes );
-       if(res1){
+      const res1 = await explanationModel.insertExplanation(topicId, newExplanation.prompt, newExplanation.text, newExplanation.likes);
+      if (res1) {
         console.log('genreated...')
-       }
+      }
     } else {
-      console.log(  'explanations from database')
-      res.json(explanations);
+      console.log('explanations from database')
+      const enrichedExplanations = await Promise.all(
+        explanations.map(async (explanation) => {
+          const likedbys = await explanationModel.fetchLikedUserIdsByExplanationId(explanation.id);
+          const learnedBy = await explanationModel.fetchLearnedUserIdsByExplanationId(topicId);
+          return { ...explanation, liked_by: likedbys, learned_by: learnedBy};
+        })
+      );
+
+      res.json(enrichedExplanations);
+ 
     }
 
   } catch (error) {

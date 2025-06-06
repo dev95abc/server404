@@ -4,7 +4,8 @@ import * as CourseController from '../controller/course.controller';
 const router = express.Router();
 
 router.get('/', CourseController.getAllCourses); 
-router.get('/getAllDet/:id', CourseController.getAllDetailsByCourseId);
+router.get('/last-visited-course/:id', CourseController.getLastVisitedCourseByUser);
+router.post('/getAllDet/:id', CourseController.getAllDetailsByCourseId);
 router.get('/getCourseByMajorId/:id', CourseController.getAllCourseByMajorId);
 router.post('/', CourseController.createCourse);
 router.put('/:id', CourseController.updateCourse);

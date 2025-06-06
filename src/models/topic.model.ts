@@ -10,6 +10,24 @@ export const fetchTopicById = async (id: number) => {
     return db.all('SELECT * FROM topics WHERE chapter_id = ?', [id]);
 };
 
+ 
+export const fetchTopicWithLearnedStatus = async (userId: number, chapterId: number) => {
+    const db = await getDb();
+    return db.all(`
+        SELECT 
+            t.*,
+            CASE WHEN lt.topic_id IS NOT NULL THEN 1 ELSE 0 END AS learned
+        FROM 
+            topics t
+        LEFT JOIN 
+            learned_topics lt ON t.id = lt.topic_id AND lt.user_id = ?
+        WHERE 
+            t.chapter_id = ?
+        ORDER BY 
+            t.id
+    `, [userId, chapterId]);
+};
+
 export const insertTopic = async (name: string, chapterId: number) => {
     const db = await getDb();
     const result = await db.run(

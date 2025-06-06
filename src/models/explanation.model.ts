@@ -18,6 +18,41 @@ export const fetchExplanationById = async (id: number) => {
   return db.get('SELECT * FROM explanations WHERE topic_id = ?', [id]);
 };
 
+export const fetchLikedUserIdsByExplanationId = async (explanationId: number): Promise<number[]> => {
+  const db = await getDb();
+  console.log('fetchLikedUserIdsByExplanationId called with explanationId:', explanationId);
+  const rows = await db.all(
+    'SELECT user_id FROM likes WHERE explanation_id = ?',
+    [explanationId]
+  );
+  console.log('rows', rows)
+  return rows.map(row => row.user_id);
+};
+
+export const fetchLearnedUserIdsByExplanationId = async (explanationId: number): Promise<number[]> => {
+  const db = await getDb();
+  console.log('fetchLearnedUserIdsByExplanationId called with topic id:', explanationId);
+  const rows = await db.all(
+    'SELECT user_id FROM learned_topics WHERE topic_id = ?',
+    [explanationId]
+  );
+  console.log('rows', rows)
+  return rows.map(row => row.user_id);
+};
+
+
+//write a functin that return the liked user ids for a given explanation id form the likes table
+// export const fetchLikedUserIdsByExplanationId  
+// CREATE TABLE likes (
+//   id INTEGER PRIMARY KEY,
+//   explanation_id INTEGER NOT NULL,
+//   user_id INTEGER NOT NULL,
+//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//   FOREIGN KEY (explanation_id) REFERENCES explanations (id) ON DELETE CASCADE,
+//   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+//   UNIQUE (explanation_id, user_id)
+// )
+
 export const fetchExplanationsByTopicId = async (topicId: number) => {
 
   const db = await getDb();

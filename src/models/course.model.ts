@@ -1,45 +1,81 @@
 import { getDb } from '../db';
 
 export const fetchAllCourses = async () => {
-    const db = await getDb();
-    return db.all('SELECT * FROM course ORDER BY id');
+  const db = await getDb();
+  return db.all('SELECT * FROM course ORDER BY id');
+
 };
 
 export const fetchCourseById = async (id: number) => {
-    const db = await getDb();
-    return db.get('SELECT * FROM courses WHERE id = ?', [id]);
+  const db = await getDb();
+  return db.get('SELECT * FROM courses WHERE id = ?', [id]);
 };
 export const fetchAllCoursesByMajorId = async (id: number) => {
-    const db = await getDb();
-    return db.all('SELECT * FROM courses WHERE id = ?', [id]);
+  const db = await getDb();
+  return db.all('SELECT * FROM courses WHERE id = ?', [id]);
 };
 
 export const insertCourse = async (name: string, semesterId: number) => {
-    const db = await getDb();
-    const result = await db.run(
-        'INSERT INTO course (name, semester_id) VALUES (?, ?)',
-        name,
-        semesterId
-    );
-    return db.get('SELECT * FROM course WHERE id = ?', result.lastID);
+  const db = await getDb();
+  const result = await db.run(
+    'INSERT INTO course (name, semester_id) VALUES (?, ?)',
+    name,
+    semesterId
+  );
+  return db.get('SELECT * FROM course WHERE id = ?', result.lastID);
 };
 
 export const updateCourseById = async (id: number, name: string, semesterId: number) => {
-    const db = await getDb();
-    await db.run(
-        'UPDATE course SET name = ?, semester_id = ? WHERE id = ?',
-        name,
-        semesterId,
-        id
-    );
-    return db.get('SELECT * FROM course WHERE id = ?', id);
+  const db = await getDb();
+  await db.run(
+    'UPDATE course SET name = ?, semester_id = ? WHERE id = ?',
+    name,
+    semesterId,
+    id
+  );
+  return db.get('SELECT * FROM course WHERE id = ?', id);
 };
 
 export const deleteCourseById = async (id: number) => {
-    const db = await getDb();
-    await db.run('DELETE FROM course WHERE id = ?', id);
+  const db = await getDb();
+  await db.run('DELETE FROM course WHERE id = ?', id);
 };
 
+export async function recordCourseVisitAndTrim(user_id: number, course_id: number): Promise<void> {
+  const db = await getDb();
+  console.log('recordCourseVisitAndTrim called with user_id:', user_id, 'course_id:', course_id);
+
+  await db.run(`
+      INSERT INTO course_visits (user_id, course_id, visited_at)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id, course_id)
+      DO UPDATE SET visited_at = CURRENT_TIMESTAMP
+    `, [user_id, course_id]);
+
+  // Now trim to the 3 most recent course visits for this user
+  await db.run(`
+      DELETE FROM course_visits
+      WHERE id NOT IN (
+        SELECT id FROM course_visits
+        WHERE user_id = ?
+        ORDER BY visited_at DESC
+        LIMIT 1
+      ) AND user_id = ?
+    `, [user_id, user_id]);
+}
+
+export async function getLastVisitedCourse(user_id: number): Promise<{ course_id: number, visited_at: string } | null> {
+  const db = await getDb();
+console.log('getLastVisitedCourse called with user_id:', user_id);
+  const row = await db.get(`
+    SELECT course_id, visited_at
+    FROM course_visits
+    WHERE user_id = ?
+    ORDER BY visited_at DESC 
+  `, [user_id]);
+
+  return row || null;
+}
 
 interface CoursePayload {
   id?: number;
@@ -62,78 +98,78 @@ interface CoursePayload {
   }>;
 }
 
-export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>): Promise<CoursePayload>  => {
-    const db = await getDb();
-    
-    try {
-      await db.run('BEGIN TRANSACTION');
+export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>): Promise<CoursePayload> => {
+  const db = await getDb();
 
-      // 1. Insert the course
-      const courseResult = await db.run(
-        `INSERT INTO courses (semester_id, course_code, course_title, credits, major_id)
+  try {
+    await db.run('BEGIN TRANSACTION');
+
+    // 1. Insert the course
+    const courseResult = await db.run(
+      `INSERT INTO courses (semester_id, course_code, course_title, credits, major_id)
          VALUES (?, ?, ?, ?, ?)`,
-        [payload.semester_id, payload.course_code, payload.course_title, payload.credits, payload.major_id]
-      );
-      const courseId = courseResult.lastID;
+      [payload.semester_id, payload.course_code, payload.course_title, payload.credits, payload.major_id]
+    );
+    const courseId = courseResult.lastID;
 
-      // 2. Insert all chapters/modules
-      const insertedModules = await Promise.all(
-        payload.modules.map(async (module) => {
-          const moduleResult = await db.run(
-            `INSERT INTO chapters (course_id, name, module_number, unit_number)
+    // 2. Insert all chapters/modules
+    const insertedModules = await Promise.all(
+      payload.modules.map(async (module) => {
+        const moduleResult = await db.run(
+          `INSERT INTO chapters (course_id, name, module_number, unit_number)
              VALUES (?, ?, ?, ?)`,
-            [courseId, module.name, module.module_number, module.unit_number]
-          );
-          const chapterId = moduleResult.lastID;
+          [courseId, module.name, module.module_number, module.unit_number]
+        );
+        const chapterId = moduleResult.lastID;
 
-          // 3. Insert all topics for this chapter
-          const insertedTopics = await Promise.all(
-            module.topics.map(async (topic) => {
-              const topicResult = await db.run(
-                `INSERT INTO topics (chapter_id, title)
+        // 3. Insert all topics for this chapter
+        const insertedTopics = await Promise.all(
+          module.topics.map(async (topic) => {
+            const topicResult = await db.run(
+              `INSERT INTO topics (chapter_id, title)
                  VALUES (?, ?)`,
-                [chapterId, topic.title]
-              );
-              return {
-                ...topic,
-                id: topicResult.lastID,
-                chapter_id: chapterId
-              };
-            })
-          );
+              [chapterId, topic.title]
+            );
+            return {
+              ...topic,
+              id: topicResult.lastID,
+              chapter_id: chapterId
+            };
+          })
+        );
 
-          return {
-            ...module,
-            id: chapterId,
-            course_id: courseId,
-            topics: insertedTopics
-          };
-        })
-      );
+        return {
+          ...module,
+          id: chapterId,
+          course_id: courseId,
+          topics: insertedTopics
+        };
+      })
+    );
 
-      await db.run('COMMIT');
+    await db.run('COMMIT');
 
-      return {
-        ...payload,
-        id: courseId,
-        modules: insertedModules
-      };
+    return {
+      ...payload,
+      id: courseId,
+      modules: insertedModules
+    };
 
-    } catch (error) {
-        console.log(error, 'error in qureis')
-      await db.run('ROLLBACK');
-      console.error('Error inserting course hierarchy:', error);
-      throw error;
-    }
+  } catch (error) {
+    console.log(error, 'error in qureis')
+    await db.run('ROLLBACK');
+    console.error('Error inserting course hierarchy:', error);
+    throw error;
   }
+}
 
 
 
 
 export const AllDetailsByCourseId = async (id: number) => {
-    const db = await getDb();
-    console.log('running....', id)
-  return   await db.get(`
+  const db = await getDb();
+  console.log('running....', id)
+  return await db.get(`
 SELECT 
     u.name AS university_name,
     m.name AS major_name,
@@ -179,14 +215,14 @@ ORDER BY
     u.name, m.name, s.name, co.course_code, 
     ch.module_number, ch.unit_number, ch.name, t.title;
     `,
-        [id],
-        (err: any, rows: any) => {
-            if (err) {
-                console.log('Error executing query:', err);
-                return;
-            }
-            console.log('Results:', rows);
-        }
-    );
+    [id],
+    (err: any, rows: any) => {
+      if (err) {
+        console.log('Error executing query:', err);
+        return;
+      }
+      console.log('Results:', rows);
+    }
+  );
 }
 

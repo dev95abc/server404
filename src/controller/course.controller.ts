@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as CourseModel from '../models/course.model';
 import { fetchChapterById } from '../models/chapter.model';
-import { fetchTopicById } from '../models/topic.model';
+import { fetchTopicById, fetchTopicWithLearnedStatus } from '../models/topic.model';
 import { fetchExplanationById } from '../models/explanation.model';
 
 interface Topic {
@@ -33,12 +33,6 @@ interface CourseWithHierarchy {
   // ... your existing course fields
   modules: Module[];
 }
-
-
-
-
-
-
 
 
 export function organizeByModulesAndUnits(chapters: Chapter[]): CourseWithHierarchy {
@@ -83,12 +77,40 @@ export function organizeByModulesAndUnits(chapters: Chapter[]): CourseWithHierar
 
   return { modules };
 }
+ 
+export async function getLastVisitedCourseByUser(req: Request, res: Response) {
+  // const userId = parseInt(req.params.userId, 10);
+  
+    const userId = Number(req.params.id);
+  console.log('userId:', req.params.id, 'params:', req.params);
+
+  if (isNaN(userId)) {
+    res.status(400).json({ error: 'Invalid user_id parameter' });
+  } else { 
+    try {
+      const course = await CourseModel.getLastVisitedCourse(userId);
+      console.log('Last visited course:', course);
+
+      if (!course) {
+        res.status(404).json({ message: 'No course visits found for this user.' });
+      }else{
+
+        res.status(200).json(course);
+      }
+
+    } catch (error) {
+      console.error('Error fetching last visited course:', error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+}
 
 export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
   try {
 
-    console.log('called')
+    console.log('called', req.body)
     const id = Number(req.params.id);
+    const { auth0_id } = req.body;
 
     // Fetch course details
     const course = await CourseModel.fetchCourseById(id);
@@ -104,17 +126,19 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
     const chaptersWithContent = await Promise.all(
       chapters.map(async (chapter) => {
         const topics = await fetchTopicById(chapter.id);
-
-
+        // const topics = await fetchTopicWithLearnedStatus(chapter.id, 1); 
 
         return {
           ...chapter,
-          topics
+          topics,
         };
       })
     );
 
     const final = organizeByModulesAndUnits(chaptersWithContent)
+    await CourseModel.recordCourseVisitAndTrim(auth0_id, id);
+
+
     res.json({
       ...course,
       modules: final.modules
@@ -127,7 +151,7 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
     });
   }
 };
- 
+
 export const getAllCourseByMajorId = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
