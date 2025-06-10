@@ -77,23 +77,24 @@ export function organizeByModulesAndUnits(chapters: Chapter[]): CourseWithHierar
 
   return { modules };
 }
- 
+
 export async function getLastVisitedCourseByUser(req: Request, res: Response) {
   // const userId = parseInt(req.params.userId, 10);
-  
-    const userId = Number(req.params.id);
+
+  const userId = Number(req.params.id);
+  // const userId = Number(req.params.id);
   console.log('userId:', req.params.id, 'params:', req.params);
 
   if (isNaN(userId)) {
     res.status(400).json({ error: 'Invalid user_id parameter' });
-  } else { 
+  } else {
     try {
-      const course = await CourseModel.getLastVisitedCourse(userId);
+      const course = await CourseModel.getVisitedCourses(userId);
       console.log('Last visited course:', course);
 
       if (!course) {
         res.status(404).json({ message: 'No course visits found for this user.' });
-      }else{
+      } else {
 
         res.status(200).json(course);
       }
@@ -111,6 +112,7 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
     console.log('called', req.body)
     const id = Number(req.params.id);
     const { auth0_id } = req.body;
+    let entityLength = 0;
 
     // Fetch course details
     const course = await CourseModel.fetchCourseById(id);
@@ -126,11 +128,14 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
     const chaptersWithContent = await Promise.all(
       chapters.map(async (chapter) => {
         const topics = await fetchTopicById(chapter.id);
-        // const topics = await fetchTopicWithLearnedStatus(chapter.id, 1); 
+        console.log('topics =>>', topics.length)
+        entityLength += topics.length;
+        // const lernedstatus = await fetchTopicWithLearnedStatus(chapter.id, auth0_id);
 
         return {
           ...chapter,
           topics,
+
         };
       })
     );
@@ -141,7 +146,8 @@ export const getAllDetailsByCourseId = async (req: Request, res: Response) => {
 
     res.json({
       ...course,
-      modules: final.modules
+      modules: final.modules,
+      topicLength: entityLength
     });
   } catch (error) {
     console.error('Error in getAllDetailsByCourseId:', error);

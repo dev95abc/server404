@@ -9,6 +9,12 @@ export async function findUserByAuth0Id(auth0Id: string) {
     return db.get('SELECT * FROM users WHERE auth0_id = ?', [auth0Id]);
 }
 
+export async function findUserById(userId: number) {
+    const db = await getDb();
+    return db.get('SELECT * FROM users WHERE id = ?', [userId]);
+}
+
+
 export async function createUser(auth0Id: string, email: string, name: string) {
     const db = await getDb();
     const result = await db.run(
@@ -20,14 +26,25 @@ export async function createUser(auth0Id: string, email: string, name: string) {
 
 
 
-export async function insertLearnedTopic(topic_id: number, user_id: number): Promise<boolean> {
+export async function insertLearnedTopic(topic_id: number, user_id: number, chapter_id:number): Promise<any> {
     const db = await getDb();
     try {
-        await db.run(
-            `INSERT INTO learned_topics (topic_id, user_id) VALUES (?, ?)`,
-            [topic_id, user_id]
+//         CREATE TABLE learned_topics (
+//   id INTEGER PRIMARY KEY,
+//   topic_id INTEGER NOT NULL,
+//   chapter_id INTEGER NOT NULL,
+//   user_id INTEGER NOT NULL,
+//   marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+//   FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE,
+//   FOREIGN KEY (chapter_id) REFERENCES chapters (id) ON DELETE CASCADE,
+//   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+//   UNIQUE (topic_id, user_id)
+// )
+        const added = await db.run(
+            `INSERT INTO learned_topics (topic_id, user_id, chapter_id) VALUES (?, ?, ?)`,
+            [topic_id, user_id, chapter_id]
         );
-        return true;
+        return added;
     } catch (err: any) {
         if (err.code === 'SQLITE_CONSTRAINT') {
             return false; // Already marked
@@ -47,6 +64,19 @@ export async function removeLearnedTopicByUser(topic_id: number, user_id: number
     } else {
         return false
     }
+}
+
+export async function getLearnedTopicsByUser(user_id: number): Promise<{ topic_id: number }[]> {
+    const db = await getDb();
+
+    const rows = await db.all<{ topic_id: number }[]>(`
+    SELECT topic_id, chapter_id
+    FROM learned_topics
+    WHERE user_id = ?
+    ORDER BY marked_at DESC
+  `, [user_id]);
+
+    return rows;
 }
 
 

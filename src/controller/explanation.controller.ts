@@ -28,11 +28,13 @@ export const getExplanationsByTopicId = async (req: Request, res: Response) => {
   const topicId = Number(req.params.topicId);
   const chpId = Number(req.params.chpId);
   const topicTitle: string = req.body.title
+  const contextString: string = req.body.title
+
   console.log(topicId)
   try {
     const explanations = await explanationModel.fetchExplanationsByTopicId(topicId);
     if (explanations.length === 0) {
-      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle);
+      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle,contextString);
       res.status(201).json([newExplanation]);
 
       const res1 = await explanationModel.insertExplanation(topicId, newExplanation.prompt, newExplanation.text, newExplanation.likes);

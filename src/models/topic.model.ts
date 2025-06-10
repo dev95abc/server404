@@ -28,6 +28,7 @@ export const fetchTopicWithLearnedStatus = async (userId: number, chapterId: num
     `, [userId, chapterId]);
 };
 
+
 export const insertTopic = async (name: string, chapterId: number) => {
     const db = await getDb();
     const result = await db.run(

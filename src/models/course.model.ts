@@ -41,41 +41,52 @@ export const deleteCourseById = async (id: number) => {
   await db.run('DELETE FROM course WHERE id = ?', id);
 };
 
-export async function recordCourseVisitAndTrim(user_id: number, course_id: number): Promise<void> {
+export async function recordCourseVisitAndTrim(user_id: number, course_id: number ): Promise<void> {
   const db = await getDb();
   console.log('recordCourseVisitAndTrim called with user_id:', user_id, 'course_id:', course_id);
 
+  // Insert or update the course visit
   await db.run(`
-      INSERT INTO course_visits (user_id, course_id, visited_at)
-      VALUES (?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id, course_id)
-      DO UPDATE SET visited_at = CURRENT_TIMESTAMP
-    `, [user_id, course_id]);
+    INSERT INTO course_visits_New (user_id, course_id, visited_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(user_id, course_id)
+    DO UPDATE SET visited_at = CURRENT_TIMESTAMP
+  `, [user_id, course_id]);
 
-  // Now trim to the 3 most recent course visits for this user
+  // Trim to keep only the 3 most recent course visits
   await db.run(`
-      DELETE FROM course_visits
-      WHERE id NOT IN (
-        SELECT id FROM course_visits
-        WHERE user_id = ?
-        ORDER BY visited_at DESC
-        LIMIT 1
-      ) AND user_id = ?
-    `, [user_id, user_id]);
+    DELETE FROM course_visits_New
+    WHERE id NOT IN (
+      SELECT id FROM course_visits_New
+      WHERE user_id = ?
+      ORDER BY visited_at DESC
+      LIMIT 3
+    )
+    AND user_id = ?
+  `, [user_id, user_id]);
 }
 
-export async function getLastVisitedCourse(user_id: number): Promise<{ course_id: number, visited_at: string } | null> {
+
+export async function getVisitedCourses(user_id: number): Promise<
+  { course_id: number, course_code: string, course_title: string, visited_at: string }[]
+> {
   const db = await getDb();
-console.log('getLastVisitedCourse called with user_id:', user_id);
-  const row = await db.get(`
-    SELECT course_id, visited_at
-    FROM course_visits
-    WHERE user_id = ?
-    ORDER BY visited_at DESC 
+  const rows = await db.all<{
+    course_id: number;
+    course_code: string;
+    course_title: string;
+    visited_at: string;
+  }[]>(`
+    SELECT cv.course_id, c.course_code, c.course_title, cv.visited_at
+    FROM course_visits_New cv
+    JOIN courses c ON cv.course_id = c.id
+    WHERE cv.user_id = ?
+    ORDER BY cv.visited_at DESC
   `, [user_id]);
 
-  return row || null;
+  return rows;
 }
+
 
 interface CoursePayload {
   id?: number;

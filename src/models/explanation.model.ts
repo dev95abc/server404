@@ -93,7 +93,8 @@ interface Explanation {
 
 
 export const generateExplanation1 = async (topicId: Number, chpId: Number, topicTitle: string) => {
-  const prompt = `Explain the topic "${topicTitle}" in simple terms for a beginner.`;
+  // const prompt = `This is my syllabus, ${contextSyllbus}, just to give you context. now, Explain the topic "${topicTitle}" in simple terms for a beginner.`;
+  const prompt = `This is my syllabus,  just to give you context. now, Explain the topic "${topicTitle}" in simple terms for a beginner.`;
 
   const completion = await groq.chat.completions.create({
     model: 'meta-llama/llama-4-scout-17b-16e-instruct',
@@ -101,7 +102,7 @@ export const generateExplanation1 = async (topicId: Number, chpId: Number, topic
       {
         role: 'system',
         content:
-          'You are a helpful assistant that explains academic concepts clearly and concisely.',
+          'You are a helpful assistant that explains academic concepts clearly and concisely. your response directly answers the question without any additional text or explanation.',
       },
       {
         role: 'user',
@@ -125,9 +126,16 @@ export const generateExplanation1 = async (topicId: Number, chpId: Number, topic
 };
 
 
-export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string) => {
-  const prompt = `Explain the topic "${topicTitle}" in simple terms for a beginner.`;
+export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string, contextString: string) => {
+  const prompt = `I'm a beginner learning about ${topicTitle} as part of my studies. Here's context about my syllabus: ${contextString}.
 
+Please explain "${topicTitle}" to me in simple terms with these guidelines:
+1. Start directly with the explanation 20-30 words of introduction
+2. Use everyday examples and analogies
+3. Mention the other topics in the syllabus that relate to this topic
+4. Break down complex ideas into small steps
+5. Avoid jargon or explain terms simply when needed
+6. Keep it under 350 words`;
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
@@ -139,7 +147,7 @@ export const generateExplanation = async (topicId: Number, chpId: Number, topicT
             text: JSON.stringify([
               {
                 role: "user",
-                parts: [{ text: "You are a helpful assistant that explains academic concepts clearly and concisely." }]
+                parts: [{ text: "You are a helpful assistant that explains academic concepts clearly and concisely. your response directly answers the question without any additional text." }]
               },
               {
                 role: "model",
