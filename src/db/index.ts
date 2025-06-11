@@ -1,56 +1,47 @@
-// db.ts (PostgreSQL version)
 import { Pool } from 'pg';
+
 
 const pool = new Pool({
   user: 'postgres',
-  host: 'db.uqyuhmovgfpklefywmpv.supabase.co',
+  host: 'uqyuhmovgfpklefywmpv.supabase.co',
   database: 'postgres',
   password: 'Sagar.K989Kas',
   port: 5432,
 });
 
-type QueryParams = any[];
+pool.on('error', (err) => {
+  console.error('Unexpected PG pool error:', err);
+});
 
-// Mimic the sqlite3 interface
 const db = {
-  run: async (query: string, ...params: QueryParams) => {
-    return pool.query(query, params);
+  run: async (query: string, ...params: any) => {
+    try {
+      return await pool.query(query, params);
+    } catch (err) {
+      console.error('DB RUN ERROR:', err);
+      throw err;
+    }
   },
-  get: async (query: string, ...params: QueryParams) => {
-    const result = await pool.query(query, params);
-    return result.rows[0] || null;
+  get: async (query: string, ...params: any) => {
+    try {
+      const result = await pool.query(query, params);
+      return result.rows[0] || null;
+    } catch (err) {
+      console.error('DB GET ERROR:', err);
+      throw err;
+    }
   },
-  all: async (query: string, ...params: QueryParams) => {
-    const result = await pool.query(query, params);
-    return result.rows;
+  all: async (query: string, ...params: any) => {
+    try {
+      const result = await pool.query(query, params);
+      return result.rows;
+    } catch (err) {
+      console.error('DB ALL ERROR:', err);
+      throw err;
+    }
   },
 };
 
 export const getDb = async () => {
   return db;
 };
-
-
-
-
-
-
-
-// import sqlite3 from 'sqlite3'
-// import { open, Database } from 'sqlite'
-
-// let dbInstance: Database | null = null;
-
-// export const getDb = async (): Promise<Database> => {
-//   if (dbInstance) return dbInstance;
-
-//   dbInstance = await open({
-//     filename: './syllabus22.db',
-//     driver: sqlite3.Database,
-//   });
-
-//   console.log("Initializing database and tables...");
- 
-
-//   return dbInstance;
-// };
