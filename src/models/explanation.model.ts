@@ -15,14 +15,14 @@ export const fetchAllExplanations = async () => {
 
 export const fetchExplanationById = async (id: number) => {
   const db = await getDb();
-  return db.get('SELECT * FROM explanations WHERE topic_id = ?', [id]);
+  return db.get('SELECT * FROM explanations WHERE topic_id = $1', [id]);
 };
 
 export const fetchLikedUserIdsByExplanationId = async (explanationId: number): Promise<number[]> => {
   const db = await getDb();
   console.log('fetchLikedUserIdsByExplanationId called with explanationId:', explanationId);
   const rows = await db.all(
-    'SELECT user_id FROM likes WHERE explanation_id = ?',
+    'SELECT user_id FROM likes WHERE explanation_id = $1',
     [explanationId]
   );
   console.log('rows', rows)
@@ -33,7 +33,7 @@ export const fetchLearnedUserIdsByExplanationId = async (explanationId: number):
   const db = await getDb();
   console.log('fetchLearnedUserIdsByExplanationId called with topic id:', explanationId);
   const rows = await db.all(
-    'SELECT user_id FROM learned_topics WHERE topic_id = ?',
+    'SELECT user_id FROM learned_topics WHERE topic_id = $1',
     [explanationId]
   );
   console.log('rows', rows)
@@ -56,31 +56,31 @@ export const fetchLearnedUserIdsByExplanationId = async (explanationId: number):
 export const fetchExplanationsByTopicId = async (topicId: number) => {
 
   const db = await getDb();
-  return db.all('SELECT * FROM explanations WHERE topic_id = ? ORDER BY id', topicId);
+  return db.all('SELECT * FROM explanations WHERE topic_id = $1 ORDER BY id', topicId);
 };
 
 export const insertExplanation = async (topicId: number, prompt: string, content: string, likes: Number) => {
   console.log('creating explsnation')
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO explanations (topic_id, prompt, text, likes_count) VALUES (?, ?,?,?)',
+    'INSERT INTO explanations (topic_id, prompt, text, likes_count) VALUES ($1, $2,$3,$4) RETURNING *', 
     topicId,
     prompt,
     content,
     likes
   );
-  return db.get('SELECT * FROM explanations WHERE id = ?', result.lastID);
+  return result.rows[0];
 };
 
 export const updateExplanationById = async (id: number, content: string) => {
   const db = await getDb();
-  await db.run('UPDATE explanation SET content = ? WHERE id = ?', content, id);
-  return db.get('SELECT * FROM explanation WHERE id = ?', id);
+  await db.run('UPDATE explanation SET content = $1 WHERE id = $2', content, id);
+  return db.get('SELECT * FROM explanation WHERE id = $1', id);
 };
 
 export const deleteExplanationById = async (id: number) => {
   const db = await getDb();
-  await db.run('DELETE FROM explanation WHERE id = ?', id);
+  await db.run('DELETE FROM explanation WHERE id = $1', id);
 };
 
 
@@ -138,7 +138,7 @@ Please explain "${topicTitle}" to me in simple terms with these guidelines:
 6. Keep it under 350 words`;
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent$1key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
 
     const response = await axios.post(apiUrl, {
       contents: [{

@@ -8,37 +8,37 @@ export const fetchAllCourses = async () => {
 
 export const fetchCourseById = async (id: number) => {
   const db = await getDb();
-  return db.get('SELECT * FROM courses WHERE id = ?', [id]);
+  return db.get('SELECT * FROM courses WHERE id = $1', [id]);
 };
 export const fetchAllCoursesByMajorId = async (id: number) => {
   const db = await getDb();
-  return db.all('SELECT * FROM courses WHERE id = ?', [id]);
+  return db.all('SELECT * FROM courses WHERE id = $1', [id]);
 };
 
 export const insertCourse = async (name: string, semesterId: number) => {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO course (name, semester_id) VALUES (?, ?)',
+    'INSERT INTO course (name, semester_id) VALUES ($1, $2)  RETURNING *',
     name,
     semesterId
   );
-  return db.get('SELECT * FROM course WHERE id = ?', result.lastID);
+  return result.rows[0] ;
 };
 
 export const updateCourseById = async (id: number, name: string, semesterId: number) => {
   const db = await getDb();
   await db.run(
-    'UPDATE course SET name = ?, semester_id = ? WHERE id = ?',
+    'UPDATE course SET name = $1, semester_id = $2 WHERE id = $3',
     name,
     semesterId,
     id
   );
-  return db.get('SELECT * FROM course WHERE id = ?', id);
+  return db.get('SELECT * FROM course WHERE id = $1', id);
 };
 
 export const deleteCourseById = async (id: number) => {
   const db = await getDb();
-  await db.run('DELETE FROM course WHERE id = ?', id);
+  await db.run('DELETE FROM course WHERE id = $1', id);
 };
 
 export async function recordCourseVisitAndTrim(user_id: number, course_id: number ): Promise<void> {
@@ -48,7 +48,7 @@ export async function recordCourseVisitAndTrim(user_id: number, course_id: numbe
   // Insert or update the course visit
   await db.run(`
     INSERT INTO course_visits_New (user_id, course_id, visited_at)
-    VALUES (?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, CURRENT_TIMESTAMP)
     ON CONFLICT(user_id, course_id)
     DO UPDATE SET visited_at = CURRENT_TIMESTAMP
   `, [user_id, course_id]);
@@ -58,11 +58,11 @@ export async function recordCourseVisitAndTrim(user_id: number, course_id: numbe
     DELETE FROM course_visits_New
     WHERE id NOT IN (
       SELECT id FROM course_visits_New
-      WHERE user_id = ?
+      WHERE user_id = $1
       ORDER BY visited_at DESC
       LIMIT 3
     )
-    AND user_id = ?
+    AND user_id = $2
   `, [user_id, user_id]);
 }
 
@@ -71,16 +71,11 @@ export async function getVisitedCourses(user_id: number): Promise<
   { course_id: number, course_code: string, course_title: string, visited_at: string }[]
 > {
   const db = await getDb();
-  const rows = await db.all<{
-    course_id: number;
-    course_code: string;
-    course_title: string;
-    visited_at: string;
-  }[]>(`
+  const rows = await db.all(`
     SELECT cv.course_id, c.course_code, c.course_title, cv.visited_at
     FROM course_visits_New cv
     JOIN courses c ON cv.course_id = c.id
-    WHERE cv.user_id = ?
+    WHERE cv.user_id = $1
     ORDER BY cv.visited_at DESC
   `, [user_id]);
 
@@ -118,32 +113,32 @@ export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>):
     // 1. Insert the course
     const courseResult = await db.run(
       `INSERT INTO courses (semester_id, course_code, course_title, credits, major_id)
-         VALUES (?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?)  RETURNING *`,
       [payload.semester_id, payload.course_code, payload.course_title, payload.credits, payload.major_id]
     );
-    const courseId = courseResult.lastID;
+    const courseId = courseResult.rows[0].id;
 
     // 2. Insert all chapters/modules
     const insertedModules = await Promise.all(
       payload.modules.map(async (module) => {
         const moduleResult = await db.run(
           `INSERT INTO chapters (course_id, name, module_number, unit_number)
-             VALUES (?, ?, ?, ?)`,
+             VALUES (?, ?, ?, ?)  RETURNING *`,
           [courseId, module.name, module.module_number, module.unit_number]
         );
-        const chapterId = moduleResult.lastID;
+        const chapterId = moduleResult.rows[0].id;
 
         // 3. Insert all topics for this chapter
         const insertedTopics = await Promise.all(
           module.topics.map(async (topic) => {
             const topicResult = await db.run(
               `INSERT INTO topics (chapter_id, title)
-                 VALUES (?, ?)`,
+                 VALUES (?, ?) RETURNING *`,
               [chapterId, topic.title]
             );
             return {
               ...topic,
-              id: topicResult.lastID,
+              id: topicResult.rows[0].id,
               chapter_id: chapterId
             };
           })

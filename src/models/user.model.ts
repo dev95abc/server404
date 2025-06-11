@@ -6,42 +6,42 @@ import { getDb } from "../db";
 // }
 export async function findUserByAuth0Id(auth0Id: string) {
     const db = await getDb();
-    return db.get('SELECT * FROM users WHERE auth0_id = ?', [auth0Id]);
+    return db.get('SELECT * FROM users WHERE auth0_id =  $1', [auth0Id]);
 }
 
 export async function findUserById(userId: number) {
     const db = await getDb();
-    return db.get('SELECT * FROM users WHERE id = ?', [userId]);
+    return db.get('SELECT * FROM users WHERE id =  $1', [userId]);
 }
 
 
 export async function createUser(auth0Id: string, email: string, name: string) {
     const db = await getDb();
     const result = await db.run(
-        'INSERT INTO users (auth0_id, email, name) VALUES (?, ?, ?)',
+        'INSERT INTO users (auth0_id, email, name) VALUES ( $1, $2, $2)  RETURNING *',
         [auth0Id, email, name]
     );
-    return db.get('SELECT * FROM users WHERE id = ?', [result.lastID]);
+    return result.rows[0];
 }
 
 
 
-export async function insertLearnedTopic(topic_id: number, user_id: number, chapter_id:number): Promise<any> {
+export async function insertLearnedTopic(topic_id: number, user_id: number, chapter_id: number): Promise<any> {
     const db = await getDb();
     try {
-//         CREATE TABLE learned_topics (
-//   id INTEGER PRIMARY KEY,
-//   topic_id INTEGER NOT NULL,
-//   chapter_id INTEGER NOT NULL,
-//   user_id INTEGER NOT NULL,
-//   marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//   FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE,
-//   FOREIGN KEY (chapter_id) REFERENCES chapters (id) ON DELETE CASCADE,
-//   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-//   UNIQUE (topic_id, user_id)
-// )
+        //         CREATE TABLE learned_topics (
+        //   id INTEGER PRIMARY KEY,
+        //   topic_id INTEGER NOT NULL,
+        //   chapter_id INTEGER NOT NULL,
+        //   user_id INTEGER NOT NULL,
+        //   marked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        //   FOREIGN KEY (topic_id) REFERENCES topics (id) ON DELETE CASCADE,
+        //   FOREIGN KEY (chapter_id) REFERENCES chapters (id) ON DELETE CASCADE,
+        //   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        //   UNIQUE (topic_id, user_id)
+        // )
         const added = await db.run(
-            `INSERT INTO learned_topics (topic_id, user_id, chapter_id) VALUES (?, ?, ?)`,
+            `INSERT INTO learned_topics (topic_id, user_id, chapter_id) VALUES ( $1,  $2,  $3)`,
             [topic_id, user_id, chapter_id]
         );
         return added;
@@ -56,10 +56,11 @@ export async function insertLearnedTopic(topic_id: number, user_id: number, chap
 export async function removeLearnedTopicByUser(topic_id: number, user_id: number): Promise<boolean> {
     const db = await getDb();
     const result = await db.run(
-        `DELETE FROM learned_topics WHERE topic_id = ? AND user_id = ?`,
+        `DELETE FROM learned_topics WHERE topic_id =  $1 AND user_id =  $`,
         [topic_id, user_id]
     );
-    if (result.changes && result?.changes > 0) {
+
+    if (result?.rowCount) {
         return true
     } else {
         return false
@@ -69,10 +70,10 @@ export async function removeLearnedTopicByUser(topic_id: number, user_id: number
 export async function getLearnedTopicsByUser(user_id: number): Promise<{ topic_id: number }[]> {
     const db = await getDb();
 
-    const rows = await db.all<{ topic_id: number }[]>(`
+    const rows = await db.all (`
     SELECT topic_id, chapter_id
     FROM learned_topics
-    WHERE user_id = ?
+    WHERE user_id =  $1
     ORDER BY marked_at DESC
   `, [user_id]);
 
@@ -89,13 +90,13 @@ export async function insertLikeAndIncrementExplanation(explanation_id: number, 
 
         // Try inserting the like
         await db.run(
-            `INSERT INTO likes (explanation_id, user_id) VALUES (?, ?)`,
+            `INSERT INTO likes (explanation_id, user_id) VALUES ( $1, ?)`,
             [explanation_id, user_id]
         );
 
         // Increment explanation like count
         await db.run(
-            `UPDATE explanations SET likes_count = likes_count + 1 WHERE id = ?`,
+            `UPDATE explanations SET likes_count = likes_count + 1 WHERE id =  $1`,
             [explanation_id]
         );
 
@@ -123,18 +124,18 @@ export async function removeLikeAndDecrementExplanation(explanation_id: number, 
 
         // Delete the like
         const result = await db.run(
-            `DELETE FROM likes WHERE explanation_id = ? AND user_id = ?`,
+            `DELETE FROM likes WHERE explanation_id =  $1 AND user_id = ?`,
             [explanation_id, user_id]
         );
 
-        if (result.changes === 0) {
+        if (result.rowCount === 0) {
             await db.run('ROLLBACK');
             return false; // No like existed to remove
         }
 
         // Decrement the like count
         await db.run(
-            `UPDATE explanations SET likes_count = likes_count - 1 WHERE id = ? AND likes_count > 0`,
+            `UPDATE explanations SET likes_count = likes_count - 1 WHERE id =  $1 AND likes_count > 0`,
             [explanation_id]
         );
 
