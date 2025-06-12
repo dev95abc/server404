@@ -4,25 +4,16 @@ import sql from '../db';
 
 
 export const fetchAllChapters = async () => {
-    // try {
-    //     // console.log(sql)
-    //     const result = await sql`SELECT * FROM users`;
-    //     return result; // Note: return result.rows, not the whole result
-    //     //i do not get result and i do not get error as well
-    // } catch (error) {
-    //     console.error('Database error:', error);
-    //     //  i do not get error as well
-    //     throw error; // Re-throw to be caught by the route handler
-    // }
-
-     try {
-    const result = await sql`SELECT version()`;
-    console.log('Database connection successful:', result);
-    return true;
-  } catch (err) {
-    console.error('Database connection failed:', err);
-    return false;
-  }
+    try {
+        // console.log(sql)
+        const result = await sql`SELECT * FROM my_table`;
+        return result; // Note: return result.rows, not the whole result
+        //i do not get result and i do not get error as well
+    } catch (error) {
+        console.error('Database error:', error);
+        //  i do not get error as well
+        throw error; // Re-throw to be caught by the route handler
+    } 
 };
 
  // Test the connection
