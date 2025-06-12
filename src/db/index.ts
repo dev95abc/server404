@@ -2,10 +2,36 @@ import { Pool } from 'pg';
  // db.js
 import postgres from 'postgres'
 
-const connectionString = process.env.DATABASE_URL
-const sql = postgres('postgresql://postgres:Sagar.K989Kas@db.uqyuhmovgfpklefywmpv.supabase.co:5432/postgres')
+const sql = postgres(
+  process.env.DATABASE_URL || 'postgresql://postgres:sagar__kasyap@bgsyqzuhgfnlszvnqite.supabase.co:5432/postgres',
+  {
+    // Correct options (notice is valid, onerror is not)
+    onnotice: notice => console.log('Postgres Notice:', notice),
+    
+    // Recommended additional options for Supabase
+    ssl: { 
+      require: true,
+      rejectUnauthorized: false // For development only, remove in production
+    },
+    connect_timeout: 10, // Timeout after 10 seconds
+    idle_timeout: 30,    // Close idle connections after 30 seconds
+    max: 10             // Max number of connections
+  }
+);
+
+ 
+
+// Try a simple query to verify connection
+sql`SELECT 1`
+  .then(() => {
+    console.log('✅ Database connected successfully.')
+  })
+  .catch((error) => {
+    console.error('❌ Failed to connect to the database:', error)
+  })
 
 export default sql
+
 
 const pool = new Pool({
   user: 'postgres',
