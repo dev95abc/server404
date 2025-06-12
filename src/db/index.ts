@@ -3,13 +3,19 @@ import { Pool } from 'pg';
 import postgres from 'postgres'
 
 const sql = postgres(
-  process.env.DATABASE_URL || 'postgresql://sylabd_studyingby:509a112c27c3363532ffe0ded635aae133557fe8@8hunz.h.filess.io:5432/sylabd_studyingby',
+  process.env.DATABASE_URL || 'postgresql://postgres:sagar__kasyap@db.bgsyqzuhgfnlszvnqite.supabase.co:5432/postgres',
   {
-    ssl: true, // Try this simpler approach first
-    connect_timeout: 10,
-    idle_timeout: 30,
-    max: 10,
-    onnotice: notice => console.log('Postgres Notice:', notice)
+    // Correct options (notice is valid, onerror is not)
+    onnotice: notice => console.log('Postgres Notice:', notice),
+    
+    // Recommended additional options for Supabase
+    ssl: { 
+      require: true,
+      rejectUnauthorized: false // For development only, remove in production
+    },
+    connect_timeout: 10, // Timeout after 10 seconds
+    idle_timeout: 30,    // Close idle connections after 30 seconds
+    max: 10             // Max number of connections
   }
 );
 

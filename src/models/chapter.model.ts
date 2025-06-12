@@ -21,7 +21,7 @@ async function testConnection() {
   try {
     const result = await sql`SELECT version()`;
     console.log('Database connection successful:', result);
-    return true;
+    return true;    
   } catch (err) {
     console.error('Database connection failed:', err);
     return false;
