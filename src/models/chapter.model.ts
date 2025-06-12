@@ -1,9 +1,13 @@
 import { getDb } from '../db';
 
+import pool from '../db';
 export const fetchAllChapters = async () => {
     const db = await getDb();
-    return db.all('SELECT * FROM chapter ORDER BY id');
+    const result = await pool.query('SELECT * FROM users');
+    return result.rows;
 };
+
+   
 
 export const fetchChapterById = async (id: number) => {
     const db = await getDb();

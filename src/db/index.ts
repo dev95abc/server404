@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+ 
 
 
 const pool = new Pool({
@@ -45,3 +46,9 @@ const db = {
 export const getDb = async () => {
   return db;
 };
+
+ 
+ 
+
+
+export default pool;
