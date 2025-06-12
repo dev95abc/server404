@@ -1,12 +1,12 @@
 import { getDb } from '../db';
 
-import pool from '../db';
+import sql from '../db';
 
 
 export const fetchAllChapters = async () => {
     try {
-        const result = await pool.query('SELECT * FROM users');
-        return result.rows; // Note: return result.rows, not the whole result
+        const result = await sql ` SELECT * FROM users `;
+        return result; // Note: return result.rows, not the whole result
     } catch (error) {
         console.error('Database error:', error);
         throw error; // Re-throw to be caught by the route handler

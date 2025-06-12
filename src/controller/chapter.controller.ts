@@ -9,7 +9,9 @@ import {
 
 export const getAllChapters = async (_req: Request, res: Response) => {
     try {
+        console.log('Fetching all chapters...');
         const data = await fetchAllChapters();
+        console.log('Fetched chapters:', data);
         res.json(data);
     } catch (error) {
         console.error('Error in getAllChapters:', error);

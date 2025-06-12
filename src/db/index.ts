@@ -1,6 +1,11 @@
 import { Pool } from 'pg';
- 
+ // db.js
+import postgres from 'postgres'
 
+const connectionString = process.env.DATABASE_URL
+const sql = postgres('postgresql://postgres:Sagar.K989Kas@db.uqyuhmovgfpklefywmpv.supabase.co:5432/postgres')
+
+export default sql
 
 const pool = new Pool({
   user: 'postgres',
@@ -50,5 +55,4 @@ export const getDb = async () => {
  
  
 
-
-export default pool;
+ 
