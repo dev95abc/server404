@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 import postgres from 'postgres'
 
 const sql = postgres(
-  process.env.DATABASE_URL || 'postgresql://postgres:sagar__kasyap@bgsyqzuhgfnlszvnqite.supabase.co:5432/postgres',
+  process.env.DATABASE_URL || 'postgresql://postgres:sagar__kasyap@db.bgsyqzuhgfnlszvnqite.supabase.co:5432/postgres',
   {
     // Correct options (notice is valid, onerror is not)
     onnotice: notice => console.log('Postgres Notice:', notice),
@@ -22,14 +22,7 @@ const sql = postgres(
  
 
 // Try a simple query to verify connection
-sql`SELECT 1`
-  .then(() => {
-    console.log('✅ Database connected successfully.')
-  })
-  .catch((error) => {
-    console.error('❌ Failed to connect to the database:', error)
-  })
-
+ 
 export default sql
 
 
