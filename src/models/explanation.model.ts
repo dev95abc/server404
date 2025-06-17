@@ -6,8 +6,7 @@ const groq = new Groq({
   //add keys here
   apiKey: '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'
 });
-
-
+ 
 export const fetchAllExplanations = async () => {
   const db = await getDb();
   return db.all('SELECT * FROM explanation ORDER BY id');
@@ -15,72 +14,60 @@ export const fetchAllExplanations = async () => {
 
 export const fetchExplanationById = async (id: number) => {
   const db = await getDb();
-  return db.get('SELECT * FROM explanations WHERE topic_id = ?', [id]);
+  return db.get('SELECT * FROM explanation WHERE id = $1', id);
 };
 
 export const fetchLikedUserIdsByExplanationId = async (explanationId: number): Promise<number[]> => {
   const db = await getDb();
-  console.log('fetchLikedUserIdsByExplanationId called with explanationId:', explanationId);
   const rows = await db.all(
-    'SELECT user_id FROM likes WHERE explanation_id = ?',
-    [explanationId]
+    'SELECT user_id FROM likes WHERE explanation_id = $1',
+    explanationId
   );
-  console.log('rows', rows)
   return rows.map(row => row.user_id);
 };
 
-export const fetchLearnedUserIdsByExplanationId = async (explanationId: number): Promise<number[]> => {
+export const fetchLearnedUserIdsByExplanationId = async (topicId: number): Promise<number[]> => {
   const db = await getDb();
-  console.log('fetchLearnedUserIdsByExplanationId called with topic id:', explanationId);
   const rows = await db.all(
-    'SELECT user_id FROM learned_topics WHERE topic_id = ?',
-    [explanationId]
+    'SELECT user_id FROM learned_topics WHERE topic_id = $1',
+    topicId
   );
-  console.log('rows', rows)
   return rows.map(row => row.user_id);
 };
-
-
-//write a functin that return the liked user ids for a given explanation id form the likes table
-// export const fetchLikedUserIdsByExplanationId  
-// CREATE TABLE likes (
-//   id INTEGER PRIMARY KEY,
-//   explanation_id INTEGER NOT NULL,
-//   user_id INTEGER NOT NULL,
-//   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-//   FOREIGN KEY (explanation_id) REFERENCES explanations (id) ON DELETE CASCADE,
-//   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
-//   UNIQUE (explanation_id, user_id)
-// )
 
 export const fetchExplanationsByTopicId = async (topicId: number) => {
-
   const db = await getDb();
-  return db.all('SELECT * FROM explanations WHERE topic_id = ? ORDER BY id', topicId);
+  return db.all('SELECT * FROM explanation WHERE topic_id = $1 ORDER BY id', topicId);
 };
 
-export const insertExplanation = async (topicId: number, prompt: string, content: string, likes: Number) => {
-  console.log('creating explsnation')
+export const insertExplanation = async (
+  topicId: number,
+  prompt: string,
+  content: string,
+  likes: number
+) => {
   const db = await getDb();
-  const result = await db.run(
-    'INSERT INTO explanations (topic_id, prompt, text, likes_count) VALUES (?, ?,?,?)',
+  return db.get(
+    'INSERT INTO explanation (topic_id, prompt, text, likes_count) VALUES ($1, $2, $3, $4) RETURNING *',
     topicId,
     prompt,
     content,
     likes
   );
-  return db.get('SELECT * FROM explanations WHERE id = ?', result.lastID);
 };
 
 export const updateExplanationById = async (id: number, content: string) => {
   const db = await getDb();
-  await db.run('UPDATE explanation SET content = ? WHERE id = ?', content, id);
-  return db.get('SELECT * FROM explanation WHERE id = ?', id);
+  return db.get(
+    'UPDATE explanation SET text = $1 WHERE id = $2 RETURNING *',
+    content,
+    id
+  );
 };
 
 export const deleteExplanationById = async (id: number) => {
   const db = await getDb();
-  await db.run('DELETE FROM explanation WHERE id = ?', id);
+  await db.run('DELETE FROM explanation WHERE id = $1', id);
 };
 
 

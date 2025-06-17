@@ -7,22 +7,27 @@ export const fetchAllUniversities = async () => {
 
 export const fetchUniversityById = async (id: number) => {
     const db = await getDb();
-    return db.get('SELECT * FROM universities WHERE id = ?', id);
+    return db.get('SELECT * FROM universities WHERE id = $1', id);
 };
 
 export const insertUniversity = async (name: string) => {
     const db = await getDb();
-    const result = await db.run('INSERT INTO universities (name) VALUES (?)', name);
-    return db.get('SELECT * FROM universities WHERE id = ?', result.lastID);
+    return db.get(
+        'INSERT INTO universities (name) VALUES ($1) RETURNING *',
+        name
+    );
 };
 
 export const updateUniversityById = async (id: number, name: string) => {
     const db = await getDb();
-    await db.run('UPDATE universities SET name = ? WHERE id = ?', name, id);
-    return db.get('SELECT * FROM universities WHERE id = ?', id);
+    return db.get(
+        'UPDATE universities SET name = $1 WHERE id = $2 RETURNING *',
+        name,
+        id
+    );
 };
 
 export const deleteUniversityById = async (id: number) => {
     const db = await getDb();
-    await db.run('DELETE FROM universities WHERE id = ?', id);
+    await db.run('DELETE FROM universities WHERE id = $1', id);
 };

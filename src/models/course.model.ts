@@ -71,12 +71,7 @@ export async function getVisitedCourses(user_id: number): Promise<
   { course_id: number, course_code: string, course_title: string, visited_at: string }[]
 > {
   const db = await getDb();
-  const rows = await db.all<{
-    course_id: number;
-    course_code: string;
-    course_title: string;
-    visited_at: string;
-  }[]>(`
+  const rows = await db.all (`
     SELECT cv.course_id, c.course_code, c.course_title, cv.visited_at
     FROM course_visits_New cv
     JOIN courses c ON cv.course_id = c.id

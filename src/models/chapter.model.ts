@@ -1,8 +1,10 @@
 import { getDb } from '../db';
 
+
+
 export const fetchAllChapters = async () => {
     const db = await getDb();
-    return db.all('SELECT * FROM chapter ORDER BY id');
+    return db.all('SELECT * FROM users ORDER BY id');
 };
 
 export const fetchChapterById = async (id: number) => {

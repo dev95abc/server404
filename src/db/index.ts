@@ -1,18 +1,55 @@
-import sqlite3 from 'sqlite3'
-import { open, Database } from 'sqlite'
+import { Client } from 'pg';
 
-let dbInstance: Database | null = null;
+type QueryResult = {
+  lastID?: number;
+  rows: any[];
+};
 
-export const getDb = async (): Promise<Database> => {
+class PgWrapper {
+  client: Client;
+
+  constructor(client: Client) {
+    this.client = client;
+  }
+
+  async run(sql: string, ...params: any[]): Promise<QueryResult> {
+    const result = await this.client.query(sql + ' RETURNING id', params);
+    return {
+      lastID: result.rows[0]?.id,
+      rows: result.rows,
+    };
+  }
+
+  async get(sql: string, ...params: any[]) {
+    const result = await this.client.query(sql, params);
+    return result.rows[0];
+  }
+
+  async all(sql: string, ...params: any[]) {
+    const result = await this.client.query(sql, params);
+    return result.rows;
+  }
+}
+
+let dbInstance: PgWrapper | null = null;
+
+export const getDb = async (): Promise<PgWrapper> => {
   if (dbInstance) return dbInstance;
 
-  dbInstance = await open({
-    filename: './syllabus22.db',
-    driver: sqlite3.Database,
+  const client = new Client({
+    host: 'aws-0-ap-southeast-1.pooler.supabase.com',
+    port: 6543,
+    user: 'postgres.uqyuhmovgfpklefywmpv',
+    password: 'SAGARKASHYAP8',
+    database: 'postgres',
+    ssl: {
+      rejectUnauthorized: false,
+    },
   });
 
-  console.log("Initializing database and tables...");
- 
+  await client.connect();
+  console.log('✅ Connected to PostgreSQL');
 
+  dbInstance = new PgWrapper(client);
   return dbInstance;
 };
