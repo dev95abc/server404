@@ -164,6 +164,7 @@ export const getAllCourseByMajorId = async (req: Request, res: Response) => {
     const courses = await CourseModel.fetchAllCoursesByMajorId(id);
     res.json(courses);
   } catch (error) {
+    console.log('Failed to fetch courses : ',error)
     res.status(500).json({ message: 'Failed to fetch courses', error });
   }
 };

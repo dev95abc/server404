@@ -36,8 +36,9 @@ export const fetchLearnedUserIdsByExplanationId = async (topicId: number): Promi
 };
 
 export const fetchExplanationsByTopicId = async (topicId: number) => {
+  console.log('he')
   const db = await getDb();
-  return db.all('SELECT * FROM explanation WHERE topic_id = $1 ORDER BY id', topicId);
+  return db.all('SELECT * FROM explanations WHERE topic_id = $1 ORDER BY id', topicId);
 };
 
 export const insertExplanation = async (
@@ -48,7 +49,7 @@ export const insertExplanation = async (
 ) => {
   const db = await getDb();
   return db.get(
-    'INSERT INTO explanation (topic_id, prompt, text, likes_count) VALUES ($1, $2, $3, $4) RETURNING *',
+    'INSERT INTO explanations (topic_id, prompt, text, likes_count) VALUES ($1, $2, $3, $4) RETURNING *',
     topicId,
     prompt,
     content,

@@ -38,11 +38,14 @@ export async function likeExplanation(req: Request, res: Response) {
 
         // 1. Get or create the user
         let user = await findUserByAuth0Id(auth0_id);
+        console.log('one', user)
         if (user) {
             const liked = await insertLikeAndIncrementExplanation(explanation_id, user.id);
-
+            console.log('two')
+            
             if (!liked) {
                 removeLikeAndDecrementExplanation(explanation_id, user.id);
+                console.log('three')
                 res.status(200).json({ message: 'User already liked this explanation' });
             }
         }
@@ -59,7 +62,7 @@ export async function likeExplanation(req: Request, res: Response) {
 
 export async function addLearnedTopic(req: Request, res: Response) {
     const topic_id = parseInt(req.params.id);
-    const { user_id, chapter_id } = req.body;
+    const { user_id, chapter_id, course_id } = req.body;
     console.log('addLearnedTopic called', { user_id });
     let added;
     try {
@@ -70,7 +73,7 @@ export async function addLearnedTopic(req: Request, res: Response) {
 
         let user = await findUserById(user_id);
         if (user) {
-             added = await insertLearnedTopic(topic_id, user.id, chapter_id);
+             added = await insertLearnedTopic(topic_id, user.id, chapter_id, course_id);
              console.log('added', added, 'user', user.id, 'topic_id', topic_id, 'chapter_id', chapter_id);
 
             if (!added) {

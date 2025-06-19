@@ -3,8 +3,7 @@ import axios from 'axios';
 import { getDb } from '../db';
 import Groq from 'groq-sdk';
 
-const groq = new Groq({
-  //add keys here
+const groq = new Groq({ 
   apiKey: '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'
 });
 
@@ -40,7 +39,7 @@ export const parseSyllabus = async (
     .join('\n')
     .trim();
 
- const prompt = `
+  const prompt = `
 You are an expert syllabus parser that strictly follows output formatting rules.
 
 IMPORTANT INSTRUCTIONS:
@@ -241,7 +240,7 @@ ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
 
-   const response = await axios.post(apiUrl, {
+    const response = await axios.post(apiUrl, {
       contents: [
         {
           parts: [
@@ -275,19 +274,19 @@ ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
     });
 
     const responseText = response.data.candidates[0].content.parts[0].text;
-    
+
     try {
       const parsed: ParsedSyllabus = JSON.parse(responseText);
-      
+
       // Post-processing to ensure exact format
       let topicIdCounter = 1;
       let moduleIdCounter = 1;
-      
+
       parsed.modules.forEach(module => {
         module.id = moduleIdCounter++;
         module.course_id = parsed.id;
         module.unit_number = 1;
-        
+
         module.topics.forEach(topic => {
           topic.id = topicIdCounter++;
           topic.chapter_id = module.id;
@@ -297,14 +296,14 @@ ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
             .trim();
         });
       });
-      
+
       // Force specific fields
       parsed.course_code = "SIM101";
       parsed.course_title = "Introduction to Simulation and Statistical Models";
       parsed.credits = 3;
       parsed.major_id = null;
       parsed.semester_id = 1;
-      
+
       return parsed;
     } catch (err) {
       console.error('Failed to parse syllabus JSON:', err);
@@ -314,7 +313,7 @@ ONLY RETURN THE JSON OUTPUT, NOTHING ELSE. DO NOT INCLUDE ANY EXPLANATIONS.`;
     console.error('Error calling Gemini API:', error);
     return null;
   }
-}; 
+};
 export const fetchAllMajors = async () => {
   const db = await getDb();
   return db.all('SELECT * FROM major ORDER BY id');

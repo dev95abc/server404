@@ -21,14 +21,15 @@ export async function createUser(auth0Id: string, email: string, name: string) {
   return db.get('SELECT * FROM users WHERE id = $1', result.lastID);
 }
 
-export async function insertLearnedTopic(topic_id: number, user_id: number, chapter_id: number): Promise<any> {
+export async function insertLearnedTopic(topic_id: number, user_id: number, chapter_id: number,course_id:number): Promise<any> {
   const db = await getDb();
   try {
     const added = await db.run(
-      'INSERT INTO learned_topics (topic_id, user_id, chapter_id) VALUES ($1, $2, $3)',
+      'INSERT INTO learned_topics (topic_id, user_id, chapter_id, course_id) VALUES ($1, $2, $3,$4)',
       topic_id,
       user_id,
-      chapter_id
+      chapter_id,
+      course_id
     );
     return added;
   } catch (err: any) {
@@ -50,44 +51,50 @@ export async function removeLearnedTopicByUser(topic_id: number, user_id: number
   return result.rows.length > 0;
 }
 
-export async function getLearnedTopicsByUser(user_id: number): Promise<{ topic_id: number, chapter_id: number }[]> {
+export async function getLearnedTopicsByUser(user_id: number): Promise<{ topic_id: number, chapter_id: number,  course_id: number }[]> {
   const db = await getDb();
   const rows = await db.all(
-    'SELECT topic_id, chapter_id FROM learned_topics WHERE user_id = $1 ORDER BY marked_at DESC',
+    'SELECT topic_id, chapter_id, course_id FROM learned_topics WHERE user_id = $1 ORDER BY marked_at DESC',
     user_id
   );
   return rows;
 }
 
-export async function insertLikeAndIncrementExplanation(explanation_id: number, user_id: number): Promise<boolean> {
+//  Error in likeExplanation: error: insert or update on table "likes" violates foreign key constraint "likes_explanation_id_fkey"
+export async function insertLikeAndIncrementExplanation(
+  explanation_id: number,
+  user_id: number
+): Promise<boolean> {
   const db = await getDb();
-
+  const client = db.client;
+  console.log(explanation_id, user_id, 'explanation_id, user_id')
   try {
-    await db.run('BEGIN');
+    await client.query('BEGIN');
 
-    await db.run(
+    await client.query(
       'INSERT INTO likes (explanation_id, user_id) VALUES ($1, $2)',
-      explanation_id,
-      user_id
+      [explanation_id, user_id]
     );
 
-    await db.run(
+    await client.query(
       'UPDATE explanations SET likes_count = likes_count + 1 WHERE id = $1',
-      explanation_id
+      [explanation_id]
     );
 
-    await db.run('COMMIT');
+    await client.query('COMMIT');
     return true;
   } catch (err: any) {
-    await db.run('ROLLBACK');
+    await client.query('ROLLBACK');
 
+    // Handle unique constraint violation (e.g., already liked)
     if (err.code === '23505') {
-      return false; // Already liked
+      return false;
     }
 
     throw err;
   }
 }
+
 
 export async function removeLikeAndDecrementExplanation(explanation_id: number, user_id: number): Promise<boolean> {
   const db = await getDb();

@@ -33,10 +33,12 @@ export const getExplanationsByTopicId = async (req: Request, res: Response) => {
   console.log(topicId)
   try {
     const explanations = await explanationModel.fetchExplanationsByTopicId(topicId);
+    console.log('one')
     if (explanations.length === 0) {
-      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle,contextString);
+      const newExplanation = await explanationModel.generateExplanation(topicId, chpId, topicTitle, contextString);
+      console.log('two')
       res.status(201).json([newExplanation]);
-
+      console.log('three')
       const res1 = await explanationModel.insertExplanation(topicId, newExplanation.prompt, newExplanation.text, newExplanation.likes);
       if (res1) {
         console.log('genreated...')
@@ -47,12 +49,12 @@ export const getExplanationsByTopicId = async (req: Request, res: Response) => {
         explanations.map(async (explanation) => {
           const likedbys = await explanationModel.fetchLikedUserIdsByExplanationId(explanation.id);
           const learnedBy = await explanationModel.fetchLearnedUserIdsByExplanationId(topicId);
-          return { ...explanation, liked_by: likedbys, learned_by: learnedBy};
+          return { ...explanation, liked_by: likedbys, learned_by: learnedBy };
         })
       );
 
       res.json(enrichedExplanations);
- 
+
     }
 
   } catch (error) {

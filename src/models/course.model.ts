@@ -8,76 +8,80 @@ export const fetchAllCourses = async () => {
 
 export const fetchCourseById = async (id: number) => {
   const db = await getDb();
-  return db.get('SELECT * FROM courses WHERE id = ?', [id]);
+  return db.get('SELECT * FROM courses WHERE id = $1', id);
 };
+
+//Failed to fetch courses :  error: syntax error at end of input
+    // at D:\Desktop\tracking_project\Experimental folder\mon, syl\server404\node_modules\pg\lib\client.js:545:17
 export const fetchAllCoursesByMajorId = async (id: number) => {
   const db = await getDb();
-  return db.all('SELECT * FROM courses WHERE id = ?', [id]);
+  return db.all('SELECT * FROM courses WHERE major_id = $1', id);
 };
 
 export const insertCourse = async (name: string, semesterId: number) => {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO course (name, semester_id) VALUES (?, ?)',
+    'INSERT INTO course (name, semester_id) VALUES ($1, $2)',
     name,
     semesterId
   );
-  return db.get('SELECT * FROM course WHERE id = ?', result.lastID);
+  return db.get('SELECT * FROM course WHERE id = $1', result.lastID);
 };
 
 export const updateCourseById = async (id: number, name: string, semesterId: number) => {
   const db = await getDb();
   await db.run(
-    'UPDATE course SET name = ?, semester_id = ? WHERE id = ?',
+    'UPDATE course SET name = $1, semester_id =$2 WHERE id = $3',
     name,
     semesterId,
     id
   );
-  return db.get('SELECT * FROM course WHERE id = ?', id);
+  return db.get('SELECT * FROM course WHERE id = $1', id);
 };
 
 export const deleteCourseById = async (id: number) => {
   const db = await getDb();
-  await db.run('DELETE FROM course WHERE id = ?', id);
+  await db.run('DELETE FROM course WHERE id = $1', id);
 };
 
-export async function recordCourseVisitAndTrim(user_id: number, course_id: number ): Promise<void> {
+export async function recordCourseVisitAndTrim(user_id: number, course_id: number): Promise<void> {
   const db = await getDb();
   console.log('recordCourseVisitAndTrim called with user_id:', user_id, 'course_id:', course_id);
 
   // Insert or update the course visit
   await db.run(`
     INSERT INTO course_visits_New (user_id, course_id, visited_at)
-    VALUES (?, ?, CURRENT_TIMESTAMP)
+    VALUES ($1, $2, CURRENT_TIMESTAMP)
     ON CONFLICT(user_id, course_id)
     DO UPDATE SET visited_at = CURRENT_TIMESTAMP
-  `, [user_id, course_id]);
+  `,  user_id, course_id );
 
   // Trim to keep only the 3 most recent course visits
   await db.run(`
     DELETE FROM course_visits_New
     WHERE id NOT IN (
       SELECT id FROM course_visits_New
-      WHERE user_id = ?
+      WHERE user_id = $1
       ORDER BY visited_at DESC
       LIMIT 3
     )
-    AND user_id = ?
-  `, [user_id, user_id]);
+    AND user_id = $2
+  `,  user_id, user_id );
 }
 
-
+//error: Error fetching last visited course: error: invalid input syntax for type integer: "{"2"}"
 export async function getVisitedCourses(user_id: number): Promise<
   { course_id: number, course_code: string, course_title: string, visited_at: string }[]
 > {
   const db = await getDb();
-  const rows = await db.all (`
-    SELECT cv.course_id, c.course_code, c.course_title, cv.visited_at
-    FROM course_visits_New cv
-    JOIN courses c ON cv.course_id = c.id
-    WHERE cv.user_id = ?
-    ORDER BY cv.visited_at DESC
-  `, [user_id]);
+  const rows = await db.all(`
+  SELECT cv.course_id, c.course_code, c.course_title, cv.visited_at
+  FROM course_visits_New cv
+  JOIN courses c ON cv.course_id = c.id
+  WHERE cv.user_id = $1
+  ORDER BY cv.visited_at DESC
+`, user_id);
+
 
   return rows;
 }
@@ -103,28 +107,37 @@ interface CoursePayload {
     }>;
   }>;
 }
-
-export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>): Promise<CoursePayload> => {
+export const insertCourseHierarchy = async (
+  payload: Omit<CoursePayload, 'id'>
+): Promise<CoursePayload> => {
   const db = await getDb();
+  const client = db.client;
 
   try {
-    await db.run('BEGIN TRANSACTION');
+    await client.query('BEGIN');
 
     // 1. Insert the course
     const courseResult = await db.run(
       `INSERT INTO courses (semester_id, course_code, course_title, credits, major_id)
-         VALUES (?, ?, ?, ?, ?)`,
-      [payload.semester_id, payload.course_code, payload.course_title, payload.credits, payload.major_id]
+       VALUES ($1, $2, $3, $4, $5)`,
+      payload.semester_id,
+      payload.course_code,
+      payload.course_title,
+      payload.credits,
+      payload.major_id
     );
     const courseId = courseResult.lastID;
 
-    // 2. Insert all chapters/modules
+    // 2. Insert all modules (chapters)
     const insertedModules = await Promise.all(
       payload.modules.map(async (module) => {
         const moduleResult = await db.run(
           `INSERT INTO chapters (course_id, name, module_number, unit_number)
-             VALUES (?, ?, ?, ?)`,
-          [courseId, module.name, module.module_number, module.unit_number]
+           VALUES ($1, $2, $3, $4)`,
+          courseId,
+          module.name,
+          module.module_number,
+          module.unit_number
         );
         const chapterId = moduleResult.lastID;
 
@@ -133,13 +146,14 @@ export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>):
           module.topics.map(async (topic) => {
             const topicResult = await db.run(
               `INSERT INTO topics (chapter_id, title)
-                 VALUES (?, ?)`,
-              [chapterId, topic.title]
+               VALUES ($1, $2)`,
+              chapterId,
+              topic.title
             );
             return {
               ...topic,
               id: topicResult.lastID,
-              chapter_id: chapterId
+              chapter_id: chapterId,
             };
           })
         );
@@ -148,26 +162,25 @@ export const insertCourseHierarchy = async (payload: Omit<CoursePayload, 'id'>):
           ...module,
           id: chapterId,
           course_id: courseId,
-          topics: insertedTopics
+          topics: insertedTopics,
         };
       })
     );
 
-    await db.run('COMMIT');
+    await client.query('COMMIT');
 
     return {
       ...payload,
       id: courseId,
-      modules: insertedModules
+      modules: insertedModules,
     };
-
   } catch (error) {
-    console.log(error, 'error in qureis')
-    await db.run('ROLLBACK');
+    await client.query('ROLLBACK');
     console.error('Error inserting course hierarchy:', error);
     throw error;
   }
-}
+};
+
 
 
 
@@ -203,7 +216,7 @@ JOIN
 JOIN 
     courses co ON s.id = co.semester_id
 JOIN 
-    chapters ch ON co.id = ?
+    chapters ch ON co.id =$1
 LEFT JOIN 
     topics t ON ch.id = t.chapter_id
 LEFT JOIN 
@@ -221,7 +234,7 @@ ORDER BY
     u.name, m.name, s.name, co.course_code, 
     ch.module_number, ch.unit_number, ch.name, t.title;
     `,
-    [id],
+     id,
     (err: any, rows: any) => {
       if (err) {
         console.log('Error executing query:', err);
