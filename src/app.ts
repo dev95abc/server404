@@ -20,15 +20,15 @@ app.use(express.json());
  
 
 // Attach the university routes directly to the app
-app.use('/universities', universityRoutes); 
-app.use('/majors', majorRoutes);
-app.use('/semesters', semesterRoutes);
-app.use('/courses', courseRoutes);
-app.use('/chapters', chapterRoutes);
-app.use('/topics', topicRoutes);
-app.use('/explanations', explanationRoutes);
-app.use('/groke', grokeRoutes);
-app.use('/users', userRoutes)
+app.use('/api/universities', universityRoutes); 
+app.use('/api/majors', majorRoutes);
+app.use('/api/semesters', semesterRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/chapters', chapterRoutes);
+app.use('/api/topics', topicRoutes);
+app.use('/api/explanations', explanationRoutes);
+app.use('/api/groke', grokeRoutes);
+app.use('/api/users', userRoutes)
 // app.use('/prompts', promptRoutes);
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
