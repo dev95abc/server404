@@ -27,7 +27,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/chapters', chapterRoutes);
 app.use('/api/topics', topicRoutes);
 app.use('/api/explanations', explanationRoutes);
-app.use('/api/groke', grokeRoutes);
+app.use('/groke', grokeRoutes);
 app.use('/api/users', userRoutes)
 // app.use('/prompts', promptRoutes);
 const PORT = process.env.PORT || 8080;

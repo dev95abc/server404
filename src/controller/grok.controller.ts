@@ -101,13 +101,13 @@ export const getParsedSyllabus = async (_req: Request, res: Response) => {
   console.log('this is textData', textData, "major id : ",major_id)
 //TODO: add tryCatch block
   //this return an compact object by the plain text
-  const parsed = await majorModel.parseSyllabus(textData);
+  // const parsed = await majorModel.parseSyllabus(textData);
   // const formatedParsedData = organizeByModulesAndUnits(parsed?.modules)
-  if (parsed) {
-    parsed.major_id =major_id;
+  if (textData) {
+    textData.major_id =major_id;
     console.log('this is parsed running ')
     //this saves the data in database,  i takes the copact object as input
-    const letSee = await insertCourseHierarchy(parsed)
+    const letSee = await insertCourseHierarchy(textData)
     res.json(letSee);
   }
  res.json({status: 'not working '});

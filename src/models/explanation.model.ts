@@ -115,15 +115,13 @@ export const generateExplanation1 = async (topicId: Number, chpId: Number, topic
 
 
 export const generateExplanation = async (topicId: Number, chpId: Number, topicTitle: string, contextString: string) => {
-  const prompt = `I'm a beginner learning about ${topicTitle} as part of my studies. Here's context about my syllabus: ${contextString}.
+  const prompt = ` 
+Explain the topic '${topicTitle}'  in a detailed, beginner-friendly way. Include definitions, examples, tables, and a conclusion — just like how you'd teach a student step by step.
 
-Please explain "${topicTitle}" to me in simple terms with these guidelines:
-1. Start directly with the explanation 20-30 words of introduction
-2. Use everyday examples and analogies
-3. Mention the other topics in the syllabus that relate to this topic
-4. Break down complex ideas into small steps
-5. Avoid jargon or explain terms simply when needed
-6. Keep it under 350 words`;
+This topic is part of my ${contextString} syllabus — please explain it like a tutor preparing me for exams
+`;
+
+console.log(prompt, 'this is prompt')
   try {
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=AIzaSyB6FTfeIq4MsPfl2wJO0x9XWl2fr3aovyE`;
